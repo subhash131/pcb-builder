@@ -3,16 +3,13 @@ import {
   TLBaseShape, 
   HTMLContainer,
   Rectangle2d,
-  Vec2d
 } from 'tldraw'
 
 export type WireShape = TLBaseShape<
   'wire',
   {
-    start: { x: number, y: number }
-    end: { x: number, y: number }
+    points: { x: number, y: number }[]
     color: string
-    isOrthogonal: boolean
   }
 >
 
@@ -21,44 +18,53 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
 
   override getDefaultProps(): WireShape['props'] {
     return {
-      start: { x: 0, y: 0 },
-      end: { x: 100, y: 100 },
+      points: [
+        { x: 0, y: 0 },
+        { x: 100, y: 100 },
+      ],
       color: 'black',
-      isOrthogonal: true
     }
   }
 
   override getGeometry(shape: WireShape) {
-    const { start, end } = shape.props
+    const { points } = shape.props
+    if (points.length < 2) return new Rectangle2d({ width: 1, height: 1, isFilled: false })
+    
+    const maxX = Math.max(...points.map(p => p.x))
+    const maxY = Math.max(...points.map(p => p.y))
+    const minX = Math.min(...points.map(p => p.x))
+    const minY = Math.min(...points.map(p => p.y))
+    
     return new Rectangle2d({
-      width: Math.abs(end.x - start.x) || 1,
-      height: Math.abs(end.y - start.y) || 1,
+      width: Math.max(maxX - minX, 1),
+      height: Math.max(maxY - minY, 1),
       isFilled: false,
     })
   }
 
   override component(shape: WireShape) {
-    const { start, end, color, isOrthogonal } = shape.props
+    const { points, color } = shape.props
     
-    // Simple orthogonal path calculation (L-bridge)
-    const points = isOrthogonal 
-      ? `0,0 ${end.x - start.x},0 ${end.x - start.x},${end.y - start.y}`
-      : `0,0 ${end.x - start.x},${end.y - start.y}`
+    const svgPoints = points
+      .map(p => `${p.x},${p.y}`)
+      .join(' ')
+
+    const minX = Math.min(...points.map(p => p.x))
+    const minY = Math.min(...points.map(p => p.y))
+    const maxX = Math.max(...points.map(p => p.x))
+    const maxY = Math.max(...points.map(p => p.y))
 
     return (
       <HTMLContainer className="pointer-events-none">
         <svg 
           style={{ 
-            width: '100%', 
-            height: '100%', 
+            width: Math.max(maxX - minX, 1), 
+            height: Math.max(maxY - minY, 1), 
             overflow: 'visible',
-            position: 'absolute',
-            top: 0,
-            left: 0
           }}
         >
           <polyline
-            points={points}
+            points={svgPoints}
             fill="none"
             stroke={color}
             strokeWidth="2"
@@ -71,13 +77,13 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
   }
 
   override indicator(shape: WireShape) {
-    const { start, end, isOrthogonal } = shape.props
-    const points = isOrthogonal 
-      ? `0,0 ${end.x - start.x},0 ${end.x - start.x},${end.y - start.y}`
-      : `0,0 ${end.x - start.x},${end.y - start.y}`
+    const { points } = shape.props
+    const svgPoints = points
+      .map(p => `${p.x},${p.y}`)
+      .join(' ')
       
     return (
-      <polyline points={points} fill="none" strokeWidth="2" />
+      <polyline points={svgPoints} fill="none" strokeWidth="2" />
     )
   }
 }

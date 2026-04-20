@@ -1,6 +1,6 @@
 'use client'
 
-import { Tldraw, useEditor, createShapeId, TLShape } from 'tldraw'
+import { Tldraw, useEditor, createShapeId, TLShape, useValue } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { SymbolShapeUtil } from './editor/SymbolShape'
 import { WireShapeUtil } from './editor/WireShape'
@@ -15,6 +15,8 @@ function EditorUI() {
   const addComponent = useBoardStore((s) => s.addComponent)
   const connectPins = useBoardStore((s) => s.connectPins)
   const [nearestPin, setNearestPin] = useState<{ x: number, y: number, shapeId: string, pinId: string } | null>(null)
+  const [wiringSession, setWiringSession] = useState<{ activeWireId: any, points: { x: number, y: number }[] } | null>(null)
+  const [pendingStartPin, setPendingStartPin] = useState<{ x: number, y: number, pinId: string, startPoint: {x: number, y: number} } | null>(null)
 
   // Sync tldraw bindings with core Netlist
   useEffect(() => {
@@ -63,10 +65,12 @@ function EditorUI() {
     return () => cleanup?.()
   }, [editor, connectPins])
 
-  // Proximity Detection for Auto-Wiring
+  // Proximity & Wiring Interaction
   useEffect(() => {
-    const cleanup = editor.sideEffects.registerBeforeChangeHandler('pointer', (next) => {
+    const handlePointerMove = () => {
       const { x, y } = editor.inputs.currentPagePoint
+      
+      // Update Proximity
       const shapes = editor.getCurrentPageShapes()
       let nearest: typeof nearestPin = null
       let minDistance = 25
@@ -85,33 +89,149 @@ function EditorUI() {
         }
       })
       setNearestPin(nearest)
-      return next
-    })
-    return () => cleanup()
-  }, [editor])
+      
+      // Handle Drag Start for Wiring
+      if (pendingStartPin && !wiringSession) {
+        const dist = Math.sqrt((x - pendingStartPin.startPoint.x)**2 + (y - pendingStartPin.startPoint.y)**2)
+        if (dist > 5) { // 5px threshold for drag
+          handleStartWire(pendingStartPin)
+          setPendingStartPin(null)
+        }
+      }
 
-  const handleStartWire = () => {
-    if (!nearestPin) return
+      // Update Active Wire
+      if (wiringSession) {
+        const lastFixed = wiringSession.points[wiringSession.points.length - 1]
+        if(!lastFixed) return;
+        let constrainedX = x
+        let constrainedY = y
+
+        const dx = Math.abs(x - lastFixed.x)
+        const dy = Math.abs(y - lastFixed.y)
+
+        if (wiringSession.points.length === 1) {
+          if (dx > dy) constrainedY = lastFixed.y
+          else constrainedX = lastFixed.x
+        } else {
+          const prevPoint = wiringSession.points[wiringSession.points.length - 2]
+          const isPrevHorizontal = prevPoint && prevPoint.y === lastFixed.y
+          if (isPrevHorizontal) constrainedX = lastFixed.x
+          else constrainedY = lastFixed.y
+        }
+
+        const absolutePoints = [...wiringSession.points, { x: constrainedX, y: constrainedY }]
+        
+        // Normalize for tldraw: shape x,y should be top-left of points
+        const minX = Math.min(...absolutePoints.map(p => p.x))
+        const minY = Math.min(...absolutePoints.map(p => p.y))
+        const relativePoints = absolutePoints.map(p => ({ x: p.x - minX, y: p.y - minY }))
+
+        editor.updateShape({
+          id: wiringSession.activeWireId,
+          type: 'wire',
+          x: minX,
+          y: minY,
+          props: { points: relativePoints }
+        })
+      }
+    }
+
+    const handlePointerDown = () => {
+      if (wiringSession) {
+        if (nearestPin) {
+          // Finalize Wire
+          const absolutePoints = [...wiringSession.points, { x: nearestPin.x, y: nearestPin.y }]
+          const minX = Math.min(...absolutePoints.map(p => p.x))
+          const minY = Math.min(...absolutePoints.map(p => p.y))
+          const relativePoints = absolutePoints.map(p => ({ x: p.x - minX, y: p.y - minY }))
+
+          editor.updateShape({
+            id: wiringSession.activeWireId,
+            type: 'wire',
+            x: minX,
+            y: minY,
+            props: { points: relativePoints }
+          })
+          setWiringSession(null)
+        } else {
+          // Add Bend
+          const { x, y } = editor.inputs.currentPagePoint
+          const lastFixed = wiringSession.points[wiringSession.points.length - 1]
+          if(!lastFixed) return;
+          let constrainedX = x
+          let constrainedY = y
+          
+          const dx = Math.abs(x - lastFixed.x)
+          const dy = Math.abs(y - lastFixed.y)
+          
+          if (wiringSession.points.length === 1) {
+            if (dx > dy) constrainedY = lastFixed.y
+            else constrainedX = lastFixed.x
+          } else {
+            const prevPoint = wiringSession.points[wiringSession.points.length - 2]
+            if (prevPoint && prevPoint.y === lastFixed.y) constrainedX = lastFixed.x
+            else constrainedY = lastFixed.y
+          }
+
+          setWiringSession({
+            ...wiringSession,
+            points: [...wiringSession.points, { x: constrainedX, y: constrainedY }]
+          })
+        }
+      } else if (nearestPin) {
+        // Prepare for click-and-drag
+        const { x, y } = editor.inputs.currentPagePoint
+        setPendingStartPin({ ...nearestPin, startPoint: { x, y } })
+      }
+    }
+
+    const handlePointerUp = () => {
+      setPendingStartPin(null)
+    }
+
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && wiringSession) {
+        editor.deleteShape(wiringSession.activeWireId)
+        setWiringSession(null)
+      }
+    }
+
+    window.addEventListener('pointermove', handlePointerMove)
+    window.addEventListener('pointerdown', handlePointerDown)
+    window.addEventListener('pointerup', handlePointerUp)
+    window.addEventListener('keydown', handleKeyDown)
+    
+    return () => {
+      window.removeEventListener('pointermove', handlePointerMove)
+      window.removeEventListener('pointerdown', handlePointerDown)
+      window.removeEventListener('pointerup', handlePointerUp)
+      window.removeEventListener('keydown', handleKeyDown)
+    }
+  }, [editor, wiringSession, nearestPin, pendingStartPin])
+
+  const handleStartWire = (pin: { x: number, y: number }) => {
+    if (!pin) return
     
     const id = createShapeId()
+    const startPoint = { x: pin.x, y: pin.y }
+    
     editor.createShape({
       id,
       type: 'wire',
-      x: nearestPin.x,
-      y: nearestPin.y,
+      x: startPoint.x,
+      y: startPoint.y,
       props: {
-        start: { x: 0, y: 0 },
-        end: { x: 50, y: 50 }, // Initial direction
-        color: '#22c55e', // Green for schematic wires
-        isOrthogonal: true
+        points: [{ x: 0, y: 0 }],
+        color: '#22c55e',
       }
     })
 
+    setWiringSession({
+      activeWireId: id,
+      points: [startPoint]
+    })
+    
     editor.select(id)
-    // For now we use the arrow tool's dragging behavior if possible, 
-    // or we just let use select and move the end point.
-    // Since wire is custom, we'll need to handle dragging later.
-    // editor.setCurrentTool('wire') // If we have a wire tool
   }
 
   const handleAddComponent = (type: 'resistor' | 'capacitor' | 'led') => {
@@ -148,15 +268,21 @@ function EditorUI() {
       {/* KiCad-style Proximity Indicator */}
       {nearestPin && (
         <div 
-          onDoubleClick={handleStartWire}
-          className="absolute z-[2000] cursor-crosshair pointer-events-auto group"
+          onPointerDown={(e) => {
+            e.stopPropagation()
+            const { x, y } = editor.inputs.currentPagePoint
+            setPendingStartPin({ ...nearestPin, startPoint: { x, y } })
+          }}
+          className="absolute z-2000 cursor-crosshair pointer-events-auto group"
           style={{ 
             left: editor.pageToScreen(nearestPin).x, 
             top: editor.pageToScreen(nearestPin).y,
             transform: 'translate(-50%, -50%)'
           }}
         >
-          <div className="w-4 h-4 rounded-full border-2 border-green-500 bg-green-400/30 animate-pulse" />
+          {/* We force a re-render tracking the camera */}
+          <CameraTracker editor={editor} />
+          <div className="w-4 h-4 rounded-full border-2 border-green-500 bg-green-400/30 animate-pulse group-hover:scale-125 transition-transform" />
         </div>
       )}
 
@@ -180,9 +306,24 @@ function EditorUI() {
         >
           + LED
         </button>
+        <div className="h-px bg-slate-200 my-1" />
+        <button 
+          onClick={() => {
+            // No alert needed, the UI should be self-explanatory
+          }}
+          className="px-4 py-2 bg-green-600 text-white text-sm font-medium rounded hover:bg-green-700 transition text-left"
+        >
+          + Wire
+        </button>
       </div>
     </>
   )
+}
+
+function CameraTracker({ editor }: { editor: any }) {
+  // eslint-disable-next-line react-hooks/rules-of-hooks
+  useValue('camera', () => editor.camera, [editor])
+  return null
 }
 
 export default function SchematicEditor() {
