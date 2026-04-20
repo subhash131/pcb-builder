@@ -4,7 +4,7 @@ interface LibrarySidebarProps {
 
 export function LibrarySidebar({ onAddComponent }: LibrarySidebarProps) {
   return (
-    <div className="absolute top-12 left-4 z-1000 flex flex-col gap-2 p-2 bg-white/80 backdrop-blur rounded-lg shadow-lg border border-slate-200">
+    <div className="absolute top-26 left-4 z-1000 flex flex-col gap-2 p-2 bg-white/80 backdrop-blur rounded-lg shadow-lg border border-slate-200">
       <div className="text-xs font-bold text-slate-500 px-2 pb-1 uppercase tracking-wider">Library</div>
       <button 
         onClick={() => onAddComponent('resistor')} 

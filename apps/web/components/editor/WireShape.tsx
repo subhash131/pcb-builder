@@ -31,7 +31,7 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
   }
 
   override getGeometry(shape: WireShape) {
-    const { points } = shape.props
+    const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
     if (points.length < 2) return new Rectangle2d({ width: 1, height: 1, isFilled: false })
     
     const maxX = Math.max(...points.map(p => p.x))
@@ -47,8 +47,9 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
   }
 
   override component(shape: WireShape) {
-    const { points, color } = shape.props
-    if (points.length < 1) return null
+    const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
+    const color = shape.props?.color || 'black';
+    if (points.length < 1) return null;
 
     const svgPoints = points
       .map(p => `${p.x},${p.y}`)
@@ -97,7 +98,7 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
   }
 
   override indicator(shape: WireShape) {
-    const { points } = shape.props
+    const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
     const svgPoints = points
       .map(p => `${p.x},${p.y}`)
       .join(' ')

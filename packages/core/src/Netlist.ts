@@ -34,6 +34,15 @@ export class Netlist {
     const nodeA = `${a.componentId}:${a.pinId}`;
     const nodeB = `${b.componentId}:${b.pinId}`;
 
+    // Auto-register nodes if missing — connectPins may be called before addComponent
+    // (e.g. when the AI inserts a wire binding directly into the DB)
+    if (!this.graph.hasNode(nodeA)) {
+      this.graph.addNode(nodeA, { componentId: a.componentId, pinId: a.pinId });
+    }
+    if (!this.graph.hasNode(nodeB)) {
+      this.graph.addNode(nodeB, { componentId: b.componentId, pinId: b.pinId });
+    }
+
     if (!this.graph.hasEdge(nodeA, nodeB)) {
       this.graph.addEdge(nodeA, nodeB, { netId });
     }

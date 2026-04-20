@@ -20,8 +20,10 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const connectPins = useBoardStore((s) => s.connectPins)
   const syncRecords = useMutation(api.schematics.sync)
   
-  // Track if we are currently performing initial load
+  // isHydrated: true once the initial DB load is complete
   const isHydrated = useRef(false)
+  // Track IDs and timestamps of things the LOCAL user has touched
+  const localEdits = useRef<Record<string, number>>({})
 
   // Logic hooks
   useNetlistSync(editor, connectPins)
@@ -33,88 +35,118 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
     pendingRef 
   } = useSchematicInteraction(editor)
 
-  // Incremental Sync Logic
+  // ── UPLOAD: push local user changes to Convex ──
   useEffect(() => {
     const cleanup = editor.store.listen(({ changes }) => {
-      // Don't sync if it's not a user change or if we haven't finished hydration
       if (!isHydrated.current) return
 
       const updates: any[] = []
       const deletions: string[] = []
 
-      // Added or Updated
       Object.values(changes.added).forEach((record) => {
         if (record.id.startsWith('shape') || record.id.startsWith('binding')) {
           updates.push(record)
+          localEdits.current[record.id] = Date.now()
         }
       })
-      Object.values(changes.updated).forEach(([prev, next]) => {
-        if (next.id.startsWith('shape') || next.id.startsWith('binding')) {
-          updates.push(next)
+      Object.values(changes.updated).forEach(([, next]) => {
+        const n = next as any
+        if (n.id.startsWith('shape') || n.id.startsWith('binding')) {
+          updates.push(n)
+          localEdits.current[n.id] = Date.now()
         }
       })
-      // Removed
       Object.values(changes.removed).forEach((record) => {
         if (record.id.startsWith('shape') || record.id.startsWith('binding')) {
           deletions.push(record.id)
+          localEdits.current[record.id] = Date.now()
         }
       })
 
       if (updates.length > 0 || deletions.length > 0) {
-        syncRecords({
-          schematicId,
-          updates,
-          deletions
-        }).catch(err => console.error("Sync failed:", err))
+        syncRecords({ schematicId, updates, deletions })
+          .catch(err => console.error("Sync failed:", err))
       }
     }, { source: 'user', scope: 'document' })
 
     return () => cleanup()
   }, [editor, schematicId, syncRecords])
 
-  // Hydration logic
+  // ── DOWNLOAD: receive changes from Convex ──
   const records = useQuery(api.schematics.getRecords, { schematicId })
   
   useEffect(() => {
-    if (records && !isHydrated.current) {
-      const tldrawRecords: any[] = []
-      
-      // Map shapes
-      records.shapes.forEach(s => {
-        tldrawRecords.push({
-          id: s.tldrawId,
-          typeName: 'shape',
-          type: s.type,
-          x: s.x,
-          y: s.y,
-          rotation: s.rotation,
-          index: s.index,
-          parentId: s.parentId,
-          isLocked: s.isLocked,
-          opacity: s.opacity,
-          props: s.props,
-          meta: s.meta,
-        })
-      })
+    if (!records) return
 
-      // Map bindings
-      records.bindings.forEach(b => {
-        tldrawRecords.push({
-          id: b.tldrawId,
-          typeName: 'binding',
-          type: b.type,
-          fromId: b.fromId,
-          toId: b.toId,
-          props: b.props,
-          meta: b.meta,
-        })
-      })
-
-      if (tldrawRecords.length > 0) {
-        editor.store.put(tldrawRecords)
+    const mapShape = (s: any) => {
+      if (s.type === 'line') return null
+      return {
+        id: s.tldrawId,
+        typeName: 'shape' as const,
+        type: s.type,
+        x: s.x,
+        y: s.y,
+        rotation: s.rotation,
+        index: s.index,
+        parentId: s.parentId,
+        isLocked: s.isLocked,
+        opacity: s.opacity,
+        props: {
+          color: "black",
+          dash: "draw",
+          size: "m",
+          fill: "none",
+          font: "draw",
+          align: "middle",
+          spline: "line",
+          ...(s.props || {})
+        },
+        meta: s.meta,
       }
-      
+    }
+
+    const mapBinding = (b: any) => ({
+      id: b.tldrawId,
+      typeName: 'binding' as const,
+      type: b.type,
+      fromId: b.fromId,
+      toId: b.toId,
+      props: b.props,
+      meta: b.meta,
+    })
+
+    if (!isHydrated.current) {
+      // ── Initial load: put everything from DB into the editor ──
+      const batch: any[] = []
+      records.shapes.forEach(s => { const r = mapShape(s); if (r) batch.push(r) })
+      records.bindings.forEach(b => batch.push(mapBinding(b)))
+      if (batch.length > 0) editor.store.put(batch)
       isHydrated.current = true
+      return
+    }
+
+    // ── Live sync: ONLY inject shapes that are brand-new in the DB ──
+    // (i.e. the AI just added them). We NEVER overwrite shapes the local
+    // user already has on their canvas — that would cause rubber-banding.
+    const now = Date.now()
+    const OWNERSHIP_TTL = 10_000 // 10s — user owns a shape for this long after last touch
+    const newRecords: any[] = []
+    
+    records.shapes.forEach(s => {
+      const r = mapShape(s)
+      if (!r) return
+      const isNew = !editor.store.has(r.id as any)
+      const userOwns = (localEdits.current[s.tldrawId] ?? 0) > now - OWNERSHIP_TTL
+      if (isNew && !userOwns) newRecords.push(r)
+    })
+
+    records.bindings.forEach(b => {
+      const r = mapBinding(b)
+      if (!editor.store.has(r.id as any)) newRecords.push(r)
+    })
+    
+    if (newRecords.length > 0) {
+      editor.store.mergeRemoteChanges(() => editor.store.put(newRecords))
     }
   }, [editor, records])
 
