@@ -23,8 +23,97 @@ export function useSchematicInteraction(editor: Editor) {
   useEffect(() => { wiringRef.current = wiringSession }, [wiringSession])
   useEffect(() => { nearestPinRef.current = nearestPin }, [nearestPin])
   useEffect(() => { pendingRef.current = pendingStartPin }, [pendingStartPin])
+  
+  const updateWireShape = (wireId: any, absolutePoints: { x: number, y: number }[]) => {
+    const minX = Math.min(...absolutePoints.map(p => p.x))
+    const minY = Math.min(...absolutePoints.map(p => p.y))
+    const relativePoints = absolutePoints.map(p => ({ x: p.x - minX, y: p.y - minY }))
+    editor.updateShape({
+      id: wireId,
+      type: 'wire',
+      x: minX,
+      y: minY,
+      props: { points: relativePoints }
+    })
+  }
 
-  const handleStartWire = (pin: { x: number, y: number }) => {
+  // Listen for symbol movements and update bound wires
+  useEffect(() => {
+    const cleanup = editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
+      if (next.type !== 'symbol') return
+      
+      // If position or size changed, update connected wires
+      if (prev.x !== next.x || prev.y !== next.y || (prev.props as any).w !== (next.props as any).w || (prev.props as any).h !== (next.props as any).h) {
+        const wires = editor.getCurrentPageShapes().filter(s => s.type === 'wire')
+        for (const wire of wires) {
+          const props = wire.props as any
+          let needsUpdate = false
+          const absolutePoints = props.points.map((p: any) => ({ 
+            x: p.x + wire.x, 
+            y: p.y + wire.y 
+          }))
+
+          const stretch = (points: {x: number, y: number}[], targetIndex: number, newPoint: {x: number, y: number}) => {
+            const result = [...points]
+            const oldPoint = result[targetIndex]
+            if (!oldPoint) return result
+            
+            result[targetIndex] = newPoint
+
+            const neighborIndex = targetIndex === 0 ? 1 : points.length - 2
+            if (neighborIndex < 0 || neighborIndex >= points.length) return result
+
+            const neighbor = result[neighborIndex]
+            if (!neighbor) return result
+            
+            const dx = Math.abs(oldPoint.x - neighbor.x)
+            const dy = Math.abs(oldPoint.y - neighbor.y)
+
+            // If 2 points and moving diagonal: Add elbow
+            if (points.length === 2 && newPoint.x !== neighbor.x && newPoint.y !== neighbor.y) {
+              const elbow = { x: newPoint.x, y: neighbor.y }
+              if (targetIndex === 0) result.splice(1, 0, elbow)
+              else result.splice(points.length - 1, 0, elbow)
+              return result
+            }
+
+            // If 3+ points, maintain orthogonality
+            if (dx < 0.1) { // Was Vertical
+              result[neighborIndex] = { x: newPoint.x, y: neighbor.y }
+            } else if (dy < 0.1) { // Was Horizontal
+              result[neighborIndex] = { x: neighbor.x, y: newPoint.y }
+            }
+            return result
+          }
+
+          if (props.startBinding?.shapeId === next.id) {
+            const pin = (next.props as any).pins.find((p: any) => p.id === props.startBinding.pinId)
+            if (pin) {
+              const newPoint = {
+                x: next.x + (pin.x * (next.props as any).w),
+                y: next.y + (pin.y * (next.props as any).h)
+              }
+              const stretchedPoints = stretch(absolutePoints, 0, newPoint)
+              updateWireShape(wire.id, stretchedPoints)
+            }
+          } else if (props.endBinding?.shapeId === next.id) {
+            const pin = (next.props as any).pins.find((p: any) => p.id === props.endBinding.pinId)
+            if (pin) {
+              const newPoint = {
+                x: next.x + (pin.x * (next.props as any).w),
+                y: next.y + (pin.y * (next.props as any).h)
+              }
+              const stretchedPoints = stretch(absolutePoints, absolutePoints.length - 1, newPoint)
+              updateWireShape(wire.id, stretchedPoints)
+            }
+          }
+        }
+      }
+    })
+    return () => cleanup()
+  }, [editor])
+
+  const handleStartWire = (pin: { x: number, y: number, shapeId?: string, pinId?: string }) => {
     const id = createShapeId()
     const startPoint = { x: pin.x, y: pin.y }
     editor.createShape({
@@ -32,7 +121,11 @@ export function useSchematicInteraction(editor: Editor) {
       type: 'wire',
       x: startPoint.x,
       y: startPoint.y,
-      props: { points: [{ x: 0, y: 0 }], color: '#22c55e' }
+      props: { 
+        points: [{ x: 0, y: 0 }], 
+        color: '#22c55e',
+        startBinding: pin.shapeId ? { shapeId: pin.shapeId, pinId: pin.pinId } : null
+      }
     })
     const next = { activeWireId: id, points: [startPoint] }
     wiringRef.current = next
@@ -73,18 +166,6 @@ export function useSchematicInteraction(editor: Editor) {
       return [elbow, { x, y }]
     }
 
-    const updateWireShape = (wireId: any, absolutePoints: { x: number, y: number }[]) => {
-      const minX = Math.min(...absolutePoints.map(p => p.x))
-      const minY = Math.min(...absolutePoints.map(p => p.y))
-      const relativePoints = absolutePoints.map(p => ({ x: p.x - minX, y: p.y - minY }))
-      editor.updateShape({
-        id: wireId,
-        type: 'wire',
-        x: minX,
-        y: minY,
-        props: { points: relativePoints }
-      })
-    }
 
     const handlePointerMove = () => {
       const { x, y } = editor.inputs.currentPagePoint
@@ -148,6 +229,16 @@ export function useSchematicInteraction(editor: Editor) {
         if (nearest) {
           const absolutePoints = [...session.points, ...orthoPoints]
           updateWireShape(session.activeWireId, absolutePoints)
+          
+          // Set end binding
+          editor.updateShape({
+            id: session.activeWireId,
+            type: 'wire',
+            props: {
+              endBinding: { shapeId: nearest.shapeId, pinId: nearest.pinId }
+            }
+          })
+
           setWiringSession(null)
           wiringRef.current = null
         } else {
