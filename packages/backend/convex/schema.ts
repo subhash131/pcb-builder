@@ -36,5 +36,18 @@ export default defineSchema({
   })
   .index("by_schematicId", ["schematicId"])
   .index("by_tldrawId_schematicId", ["tldrawId", "schematicId"]),
+
+  conversations: defineTable({
+    schematicId: v.id("schematics"),
+    name: v.optional(v.string()), // Optionally name the chat thread
+    updatedAt: v.number(),
+  }).index("by_schematicId", ["schematicId"]),
+
+  messages: defineTable({
+    conversationId: v.id("conversations"),
+    role: v.union(v.literal("user"), v.literal("ai"), v.literal("system"), v.literal("tool")),
+    content: v.string(),
+    createdAt: v.number(),
+  }).index("by_conversationId", ["conversationId"]),
 });
 

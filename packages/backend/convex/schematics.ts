@@ -70,6 +70,7 @@ export const sync = mutation({
 
     // Handle Deletions
     for (const tldrawId of deletions) {
+      if (typeof tldrawId !== "string") continue;
       const table = tldrawId.startsWith('shape') ? 'shapes' : 'bindings';
       const existing = await ctx.db
         .query(table)
@@ -82,6 +83,13 @@ export const sync = mutation({
 
     // Handle Updates/Inserts
     for (const record of updates) {
+      if (!record) continue;
+
+      if (typeof record.id !== "string" || !record.id) {
+        // Agent hallucinated or forgot to include an ID, auto-generate one
+        record.id = record.type === "binding" ? `binding:${crypto.randomUUID()}` : `shape:${crypto.randomUUID()}`;
+      }
+
       if (record.id.startsWith('shape')) {
         const existing = await ctx.db
           .query("shapes")
@@ -99,7 +107,16 @@ export const sync = mutation({
           parentId: record.parentId ?? "page:page",
           isLocked: record.isLocked ?? false,
           opacity: record.opacity ?? 1,
-          props: record.props ?? {},
+          props: {
+            color: "black",
+            dash: "draw",
+            size: "m",
+            fill: "none",
+            font: "draw",
+            align: "middle",
+            spline: "line",
+            ...(record.props || {})
+          },
           meta: record.meta ?? {},
         };
 
