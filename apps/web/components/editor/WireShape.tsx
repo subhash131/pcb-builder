@@ -44,7 +44,8 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
 
   override component(shape: WireShape) {
     const { points, color } = shape.props
-    
+    if (points.length < 1) return null
+
     const svgPoints = points
       .map(p => `${p.x},${p.y}`)
       .join(' ')
@@ -54,12 +55,15 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
     const maxX = Math.max(...points.map(p => p.x))
     const maxY = Math.max(...points.map(p => p.y))
 
+    const width = Math.max(maxX - minX, 1)
+    const height = Math.max(maxY - minY, 1)
+
     return (
       <HTMLContainer className="pointer-events-none">
         <svg 
           style={{ 
-            width: Math.max(maxX - minX, 1), 
-            height: Math.max(maxY - minY, 1), 
+            width: width + 20, // Padding for nodes
+            height: height + 20, 
             overflow: 'visible',
           }}
         >
@@ -71,6 +75,18 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
             strokeLinecap="round"
             strokeLinejoin="round"
           />
+          {/* Visual Junction Nodes (Circles at each vertex) */}
+          {points.map((p, i) => (
+            <circle
+              key={i}
+              cx={p.x}
+              cy={p.y}
+              r="2.5"
+              fill={color}
+              stroke="white"
+              strokeWidth="1"
+            />
+          ))}
         </svg>
       </HTMLContainer>
     )
