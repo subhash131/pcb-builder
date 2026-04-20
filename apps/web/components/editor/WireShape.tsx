@@ -10,6 +10,8 @@ export type WireShape = TLBaseShape<
   {
     points: { x: number, y: number }[]
     color: string
+    startBinding?: { shapeId: string, pinId: string } | null
+    endBinding?: { shapeId: string, pinId: string } | null
   }
 >
 
@@ -23,6 +25,8 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
         { x: 100, y: 100 },
       ],
       color: 'black',
+      startBinding: null,
+      endBinding: null,
     }
   }
 
