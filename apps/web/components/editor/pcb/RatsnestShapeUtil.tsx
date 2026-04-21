@@ -1,6 +1,5 @@
 import { 
   ShapeUtil, 
-  HTMLContainer, 
   TLBaseShape,
   Rectangle2d,
   SVGContainer

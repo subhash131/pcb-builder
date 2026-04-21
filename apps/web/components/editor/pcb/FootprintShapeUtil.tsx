@@ -83,7 +83,6 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
             strokeWidth={1.5 * strokeScale}
             opacity={0.8}
           />
-        ))}
 
         {/* Pads */}
         {def.pads.map(pad => {
@@ -134,7 +133,7 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
           opacity={0.9}
           style={{ userSelect: 'none', pointerEvents: 'none' }}
         >
-          {componentRef}
+          {footprintId}
         </text>
       </SVGContainer>
     )

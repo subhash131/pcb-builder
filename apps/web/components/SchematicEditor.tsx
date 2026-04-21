@@ -31,7 +31,7 @@ const SchematicContext = createContext<Id<"schematics"> | null>(null)
 
 const shapeUtils = [SymbolShapeUtil, WireShapeUtil]
 
-import { mmToPx, SCHEMATIC_MM_TO_PX } from '@workspace/core'
+import { mmToPx } from '@workspace/core'
 
 export const PAGE_PRESETS = {
   'A5': { width: 210, height: 148, name: 'A5' },
