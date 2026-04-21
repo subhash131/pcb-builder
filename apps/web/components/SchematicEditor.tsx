@@ -1,4 +1,4 @@
-import { Tldraw, useEditor, Editor } from 'tldraw'
+import { Tldraw, useEditor, track } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { SymbolShapeUtil } from './editor/SymbolShape'
 import { WireShapeUtil } from './editor/WireShape'
@@ -14,6 +14,48 @@ import { Id } from "@workspace/backend/_generated/dataModel"
 import { useEffect, useRef } from 'react'
 
 const shapeUtils = [SymbolShapeUtil, WireShapeUtil]
+
+const KiCadSheet = () => {
+  return (
+    <div
+      style={{
+        position: 'absolute',
+        pointerEvents: 'none',
+        left: 0,
+        top: 0,
+        width: 2970,
+        height: 2100,
+        border: '4px solid #cc0000',
+        boxSizing: 'border-box'
+      }}
+    >
+      <div 
+        style={{
+          position: 'absolute',
+          bottom: 0,
+          right: 0,
+          width: 400,
+          height: 150,
+          borderTop: '4px solid #cc0000',
+          borderLeft: '4px solid #cc0000',
+          display: 'flex',
+          flexDirection: 'column',
+          backgroundColor: 'transparent'
+        }}
+      >
+        <div style={{ flex: 1, borderBottom: '4px solid #cc0000', padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
+          <strong>Title:</strong>&nbsp;AI Schematic Editor
+        </div>
+        <div style={{ flex: 1, borderBottom: '4px solid #cc0000', padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
+          <strong>Size:</strong>&nbsp;A4
+        </div>
+        <div style={{ flex: 1, padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
+          <strong>Rev:</strong>&nbsp;1.0
+        </div>
+      </div>
+    </div>
+  )
+}
 
 function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const editor = useEditor()
@@ -34,6 +76,11 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
     setPendingStartPin, 
     pendingRef 
   } = useSchematicInteraction(editor)
+
+  // ── ENABLE GRID ──
+  useEffect(() => {
+    editor.updateInstanceState({ isGridMode: true })
+  }, [editor])
 
   // ── UPLOAD: push local user changes to Convex ──
   useEffect(() => {
@@ -171,11 +218,12 @@ export default function SchematicEditor({ schematicId }: { schematicId: Id<"sche
   if (schematic === null) return <div className="fixed inset-0 flex items-center justify-center bg-white font-medium text-red-400">Schematic not found</div>
 
   return (
-    <div className="fixed inset-0">
+    <div className="fixed inset-0" style={{ '--color-grid': '#d0d0d0' } as React.CSSProperties}>
       <Tldraw 
         shapeUtils={shapeUtils} 
-        className="bg-white" 
+        className="bg-[#ffffee]" 
         inferDarkMode={false}
+        components={{ OnTheCanvas: KiCadSheet }}
       >
         <EditorUI schematicId={schematicId} />
       </Tldraw>

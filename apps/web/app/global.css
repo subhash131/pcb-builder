@@ -20,3 +20,7 @@ html {
 .animate-gradient-x {
   animation: gradient-x 3s ease infinite;
 }
+
+.tl-watermark_SEE-LICENSE{
+  display: none !important;
+}
