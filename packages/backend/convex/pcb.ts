@@ -174,3 +174,63 @@ export const updateFootprint = mutation({
     await ctx.db.patch(id, updates);
   },
 });
+
+/**
+ * Updates multiple footprints' placements in a single batch.
+ */
+export const updateFootprints = mutation({
+  args: {
+    updates: v.array(v.object({
+      id: v.id("pcb_footprints"),
+      x: v.number(),
+      y: v.number(),
+      rotation: v.optional(v.number()),
+      layer: v.optional(v.string()),
+    }))
+  },
+  handler: async (ctx, args) => {
+    for (const update of args.updates) {
+      const { id, ...fields } = update;
+      await ctx.db.patch(id, fields);
+    }
+  },
+});
+
+/**
+ * Updates board dimensions and preset.
+ */
+export const updateBoard = mutation({
+  args: {
+    id: v.id("pcb_boards"),
+    width: v.number(),
+    height: v.number(),
+    preset: v.string(),
+  },
+  handler: async (ctx, args) => {
+    await ctx.db.patch(args.id, {
+      boardWidth: args.width,
+      boardHeight: args.height,
+      boardPreset: args.preset,
+      updatedAt: Date.now(),
+    });
+  },
+});
+/**
+ * Updates the camera state for a PCB board.
+ */
+export const updateCamera = mutation({
+  args: {
+    id: v.id("pcb_boards"),
+    x: v.number(),
+    y: v.number(),
+    zoom: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, {
+      cameraX: args.x,
+      cameraY: args.y,
+      cameraZoom: args.zoom,
+      updatedAt: Date.now(),
+    });
+  },
+});

@@ -15,8 +15,12 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
   const updateSheet = useMutation(api.schematics.updateSheet)
   
   const preset = currentPreset || 'A4'
-  const width = currentWidth || 2970
-  const height = currentHeight || 2100
+  let width = currentWidth || 297
+  let height = currentHeight || 210
+
+  // Migration: If detecting old 0.1mm units in state, convert for display
+  if (width > 2000) width = width / 10
+  if (height > 2000) height = height / 10
 
   const handlePresetChange = (p: string) => {
     const data = PAGE_PRESETS[p as keyof typeof PAGE_PRESETS]
@@ -32,7 +36,7 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-9999">
+    <div className="fixed bottom-4 left-4 z-[9999]">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-lg hover:bg-slate-50 transition-all border border-slate-200"
@@ -65,7 +69,7 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
             {(preset === 'Custom' || !PAGE_PRESETS[preset as keyof typeof PAGE_PRESETS]) && (
               <div className="grid grid-cols-2 gap-3 pt-1">
                 <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500">Width (10th mm)</label>
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500">Width (mm)</label>
                   <input 
                     type="number" 
                     value={width}
@@ -74,7 +78,7 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
                   />
                 </div>
                 <div>
-                  <label className="mb-1 block text-[10px] font-semibold text-slate-500">Height (10th mm)</label>
+                  <label className="mb-1 block text-[10px] font-semibold text-slate-500">Height (mm)</label>
                   <input 
                     type="number" 
                     value={height}
@@ -88,8 +92,8 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
             <div className="pt-2 flex items-start gap-2 border-t border-slate-100 mt-2">
               <div className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1" />
               <p className="text-[10px] text-slate-400 leading-tight">
-                Canvas units are 0.1 mm. <br/> 
-                Standard A4 is 2970 &times; 2100.
+                Schematic units are now in mm.<br/> 
+                Scale: 10px per mm.
               </p>
             </div>
           </div>

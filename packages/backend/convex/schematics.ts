@@ -173,3 +173,22 @@ export const updateSheet = mutation({
     });
   },
 });
+/**
+ * Updates the camera state for a schematic.
+ */
+export const updateCamera = mutation({
+  args: {
+    id: v.id("schematics"),
+    x: v.number(),
+    y: v.number(),
+    zoom: v.number(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, {
+      cameraX: args.x,
+      cameraY: args.y,
+      cameraZoom: args.zoom,
+      lastUpdated: Date.now(),
+    });
+  },
+});
