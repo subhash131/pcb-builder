@@ -1,6 +1,6 @@
 import { SchematicSymbolDef, PinType } from './schematic/types'
 
-export type SymbolType = "resistor" | "capacitor" | "led" | "ic" | "74HC08" | "74HC32" | "switch" | "push_switch" | "resistor_10k" | "resistor_470" | "capacitor_100n" | "led_green" | "led_yellow" | "and_gate" | "or_gate"
+export type SymbolType = "resistor" | "capacitor" | "led" | "ic" | "74HC08" | "74HC32" | "switch" | "push_switch" | "battery" | "resistor_10k" | "resistor_470" | "capacitor_100n" | "led_green" | "led_yellow" | "and_gate" | "or_gate"
 
 const resistorSymbol: SchematicSymbolDef = {
   id: 'resistor',
@@ -247,6 +247,25 @@ export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
     },
     properties: { reference: 'SW', value: 'Slide', footprint: 'HOUSING_DIP_8_W7.62mm', datasheet: '' },
     boundingBox: { x: 0, y: 0, width: 80, height: 40 },
+  },
+  "battery": {
+    id: 'battery',
+    pins: [
+      { number: '1', name: '+', type: PinType.PASSIVE, connectionPoint: { x: 0, y: 20 }, bodyEdge: { x: 35, y: 20 }, angle: 0 },
+      { number: '2', name: '-', type: PinType.PASSIVE, connectionPoint: { x: 80, y: 20 }, bodyEdge: { x: 45, y: 20 }, angle: 180 },
+    ],
+    geometry: {
+      rectangles: [],
+      polylines: [
+        { points: [{ x: 0, y: 20 }, { x: 35, y: 20 }] }, // Left lead
+        { points: [{ x: 80, y: 20 }, { x: 45, y: 20 }] }, // Right lead
+        { points: [{ x: 35, y: 5 }, { x: 35, y: 35 }] },  // Long plate (+)
+        { points: [{ x: 45, y: 12 }, { x: 45, y: 28 }] }, // Short plate (-)
+      ],
+      circles: [], arcs: [],
+    },
+    properties: { reference: 'BT', value: '3V', footprint: 'BAT_HLD_001', datasheet: '' },
+    boundingBox: { x: 0, y: 5, width: 80, height: 30 },
   },
   "push_switch": {
     id: 'push_switch',
