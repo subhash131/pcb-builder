@@ -1,5 +1,5 @@
 import { ShapeUtil, SVGContainer, TLBaseShape, Rectangle2d } from 'tldraw'
-import { mmToPx, FOOTPRINT_DEFS } from '@workspace/core'
+import { mmToPx, FOOTPRINT_DEFS, PCB_FOOTPRINT_SCALE } from '@workspace/core'
 
 export type FootprintShape = TLBaseShape<
   'footprint',
@@ -26,8 +26,8 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
   override getGeometry(shape: FootprintShape) {
     const def = FOOTPRINT_DEFS[shape.props.footprintId] || FOOTPRINT_DEFS['R0603']!
     return new Rectangle2d({
-      width: mmToPx(def.w),
-      height: mmToPx(def.h),
+      width: mmToPx(def.w) * PCB_FOOTPRINT_SCALE,
+      height: mmToPx(def.h) * PCB_FOOTPRINT_SCALE,
       isFilled: true,
     })
   }
@@ -36,8 +36,10 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
     const { componentRef, footprintId, layer, netIds } = shape.props
     const def = FOOTPRINT_DEFS[footprintId] || FOOTPRINT_DEFS['R0603']!
     const isTop = layer === 'F.Cu'
-    const W = mmToPx(def.w)
-    const H = mmToPx(def.h)
+    
+    // Physical dimensions scaled for view
+    const W = mmToPx(def.w) * PCB_FOOTPRINT_SCALE
+    const H = mmToPx(def.h) * PCB_FOOTPRINT_SCALE
 
     // Colors
     const padColor = '#c8a020'          // copper gold
@@ -46,12 +48,15 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
     const courtyardColor = isTop ? '#ffaa00' : '#00aaff'
     const connectedColor = '#22cc44'    // green when net assigned
 
-    // Center offset
+    // Center offset (scaled)
     const cx = W / 2
     const cy = H / 2
 
-    const toX = (mm: number) => cx + mmToPx(mm)
-    const toY = (mm: number) => cy + mmToPx(mm)
+    const toX = (mm: number) => cx + mmToPx(mm) * PCB_FOOTPRINT_SCALE
+    const toY = (mm: number) => cy + mmToPx(mm) * PCB_FOOTPRINT_SCALE
+    
+    // Visual weight adjustments
+    const strokeScale = Math.sqrt(PCB_FOOTPRINT_SCALE)
 
     return (
       <SVGContainer>
@@ -59,12 +64,12 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
         <rect
           x={toX(def.courtyard.x)}
           y={toY(def.courtyard.y)}
-          width={mmToPx(def.courtyard.w)}
-          height={mmToPx(def.courtyard.h)}
+          width={mmToPx(def.courtyard.w) * PCB_FOOTPRINT_SCALE}
+          height={mmToPx(def.courtyard.h) * PCB_FOOTPRINT_SCALE}
           fill="none"
           stroke={courtyardColor}
-          strokeWidth={0.5}
-          strokeDasharray="3 2"
+          strokeWidth={1 * strokeScale}
+          strokeDasharray={`${3 * strokeScale} ${2 * strokeScale}`}
           opacity={0.6}
         />
 
@@ -75,7 +80,7 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
             x1={toX(line.x1)} y1={toY(line.y1)}
             x2={toX(line.x2)} y2={toY(line.y2)}
             stroke={silkColor}
-            strokeWidth={1}
+            strokeWidth={1.5 * strokeScale}
             opacity={0.8}
           />
         ))}
@@ -83,8 +88,8 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
         {/* Pads */}
         {def.pads.map(pad => {
           const hasNet = !!netIds[pad.number]
-          const pw = mmToPx(pad.width)
-          const ph = mmToPx(pad.height)
+          const pw = mmToPx(pad.width) * PCB_FOOTPRINT_SCALE
+          const ph = mmToPx(pad.height) * PCB_FOOTPRINT_SCALE
           const px = toX(pad.x) - pw / 2
           const py = toY(pad.y) - ph / 2
 
@@ -96,7 +101,7 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
                 rx={pad.shape === 'circle' ? pw / 2 : 1}
                 fill={hasNet ? connectedColor : padColor}
                 stroke={padStroke}
-                strokeWidth={0.5}
+                strokeWidth={1.5 * strokeScale}
               />
               {/* pad number */}
               <text
@@ -104,7 +109,7 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
                 y={toY(pad.y)}
                 textAnchor="middle"
                 dominantBaseline="central"
-                fontSize={mmToPx(0.5)}
+                fontSize={mmToPx(0.5) * PCB_FOOTPRINT_SCALE}
                 fill="white"
                 fontWeight="bold"
                 fontFamily="monospace"
@@ -119,10 +124,10 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
         {/* Ref designator — above courtyard */}
         <text
           x={cx}
-          y={toY(def.courtyard.y) - 2}
+          y={toY(def.courtyard.y) - 2 * PCB_FOOTPRINT_SCALE}
           textAnchor="middle"
           dominantBaseline="auto"
-          fontSize={mmToPx(0.8)}
+          fontSize={mmToPx(0.8) * PCB_FOOTPRINT_SCALE}
           fill={silkColor}
           fontFamily="monospace"
           fontWeight="bold"
@@ -137,6 +142,6 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
 
   override indicator(shape: FootprintShape) {
     const def = FOOTPRINT_DEFS[shape.props.footprintId] || FOOTPRINT_DEFS['R0603']!
-    return <rect width={mmToPx(def.w)} height={mmToPx(def.h)} />
+    return <rect width={mmToPx(def.w) * PCB_FOOTPRINT_SCALE} height={mmToPx(def.h) * PCB_FOOTPRINT_SCALE} />
   }
 }

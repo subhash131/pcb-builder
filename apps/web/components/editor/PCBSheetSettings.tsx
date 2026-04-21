@@ -44,7 +44,7 @@ export function PCBSheetSettings({ boardId, currentPreset, currentWidth, current
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-9999">
+    <div className="fixed bottom-4 left-4 z-[9999]">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-[#ae40a5] text-white shadow-lg hover:bg-[#c44db9] transition-all border border-[#ae40a5]/20"
@@ -100,7 +100,7 @@ export function PCBSheetSettings({ boardId, currentPreset, currentWidth, current
               <div className="h-1.5 w-1.5 rounded-full bg-[#ae40a5] mt-1" />
               <p className="text-[10px] text-[#ae40a5]/40 leading-tight">
                 PCB Layout uses mm units.<br/> 
-                Frame is for visual guidance.
+                Scale: 10px per mm.
               </p>
             </div>
           </div>

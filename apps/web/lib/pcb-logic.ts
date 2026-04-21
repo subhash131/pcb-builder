@@ -1,4 +1,4 @@
-import { Netlist, FOOTPRINT_DEFS, computeRatsnestMST, RatsnestLine } from '@workspace/core';
+import { Netlist, FOOTPRINT_DEFS, computeRatsnestMST, RatsnestLine, PCB_FOOTPRINT_SCALE } from '@workspace/core';
 
 export type { RatsnestLine };
 
@@ -49,11 +49,16 @@ export function computeRatsnest(
       // Key: "componentRef.pinNumber" — matches PinNode.ref after normalization
       const key = `${fp.componentRef}.${pin.pinNumber}`;
       
-      // Calculate absolute position: fp center + pad offset
+      // Calculate absolute position: fp center + pad offset (scaled visually)
       // Note: rotation needs to be accounted for if it's non-zero
       const rad = (fp.rotation * Math.PI) / 180;
-      const rotatedX = padDef.x * Math.cos(rad) - padDef.y * Math.sin(rad);
-      const rotatedY = padDef.x * Math.sin(rad) + padDef.y * Math.cos(rad);
+      
+      const scale = PCB_FOOTPRINT_SCALE;
+      const scaledRelativeX = padDef.x * scale;
+      const scaledRelativeY = padDef.y * scale;
+
+      const rotatedX = scaledRelativeX * Math.cos(rad) - scaledRelativeY * Math.sin(rad);
+      const rotatedY = scaledRelativeX * Math.sin(rad) + scaledRelativeY * Math.cos(rad);
 
       padPositions.set(key, { 
         x: fp.x + rotatedX, 

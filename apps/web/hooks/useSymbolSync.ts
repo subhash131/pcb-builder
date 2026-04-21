@@ -36,7 +36,7 @@ export function useSymbolSync(editor: Editor) {
 
         // 1. Register in Schematic Store (Netlist/ERC)
         addComponentSchematic(
-          shape.id,
+          designator,
           symbolId,
           def.properties.footprint,
           def.pins.map(p => ({ number: p.number, name: p.name, type: p.type }))

@@ -11,4 +11,5 @@ export * from './pcb/ForwardAnnotator';
 export * from './pcb/Ratsnest';
 export * from './types/units';
 export * from './sync/SchematicPCBSync';
+export * from './sync/NetlistReconstructor';
 export * from './pcb/footprintDefs';
