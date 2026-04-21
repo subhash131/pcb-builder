@@ -5,7 +5,7 @@ Build an open-source, web-based PCB design suite with a focus on AI assistance a
 ## 🏗️ Phase 1: Schematic Editor (Foundation)
 - [ ] **Infrastructure Setup**
   - [ ] Scaffold `packages/core` for netlist logic
-  - [ ] Scaffold `packages/kicad-parser` for symbol parsing
+  - [x] Implement `packages/kicad-parser` using `kicadts` for symbol translation
   - [ ] Configure Turborepo for new package dependencies
 - [ ] **Schematic Canvas**
   - [ ] Integrate `@tldraw/tldraw` into `apps/web`
