@@ -153,3 +153,23 @@ export const sync = mutation({
     await ctx.db.patch(schematicId, { lastUpdated: Date.now() });
   },
 });
+
+/**
+ * Updates the sheet size and preset for a schematic.
+ */
+export const updateSheet = mutation({
+  args: {
+    id: v.id("schematics"),
+    width: v.number(),
+    height: v.number(),
+    preset: v.string(),
+  },
+  handler: async (ctx, args) => {
+    return await ctx.db.patch(args.id, {
+      sheetWidth: args.width,
+      sheetHeight: args.height,
+      sheetPreset: args.preset,
+      lastUpdated: Date.now(),
+    });
+  },
+});
