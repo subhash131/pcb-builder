@@ -100,4 +100,46 @@ export const FOOTPRINT_DEFS: Record<string, FootprintDef> = {
     ],
     courtyard: { x: -5.0, y: -5.0, w: 10.0, h: 10.0 },
   },
+  SW_PUSH_6MM: {
+    id: 'SW_PUSH_6MM',
+    w: 8.0,
+    h: 8.0,
+    pads: [
+      { number: '1', x: -3.25, y: -2.25, width: 2.0, height: 1.5, shape: 'rect' },
+      { number: '1', x: -3.25, y: 2.25, width: 2.0, height: 1.5, shape: 'rect' },
+      { number: '2', x: 3.25, y: -2.25, width: 2.0, height: 1.5, shape: 'rect' },
+      { number: '2', x: 3.25, y: 2.25, width: 2.0, height: 1.5, shape: 'rect' },
+    ],
+    silkscreen: [
+      { x1: -3.0, y1: -3.0, x2: 3.0, y2: -3.0 },
+      { x1: -3.0, y1: 3.0, x2: 3.0, y2: 3.0 },
+      { x1: -3.0, y1: -3.0, x2: -3.0, y2: 3.0 },
+      { x1: 3.0, y1: -3.0, x2: 3.0, y2: 3.0 },
+      // Button plunger visual
+      { x1: -1.5, y1: -1.5, x2: 1.5, y2: -1.5 },
+      { x1: -1.5, y1: 1.5, x2: 1.5, y2: 1.5 },
+      { x1: -1.5, y1: -1.5, x2: -1.5, y2: 1.5 },
+      { x1: 1.5, y1: -1.5, x2: 1.5, y2: 1.5 },
+    ],
+    courtyard: { x: -4.5, y: -4.5, w: 9.0, h: 9.0 },
+  },
+  'SOT-23-5': {
+    id: 'SOT-23-5',
+    w: 3.0,
+    h: 3.0,
+    pads: [
+      { number: '1', x: -0.95, y: 1.3, width: 0.6, height: 1.2, shape: 'rect' },
+      { number: '2', x: 0, y: 1.3, width: 0.6, height: 1.2, shape: 'rect' },
+      { number: '3', x: 0.95, y: 1.3, width: 0.6, height: 1.2, shape: 'rect' },
+      { number: '4', x: 0.95, y: -1.3, width: 0.6, height: 1.2, shape: 'rect' },
+      { number: '5', x: -0.95, y: -1.3, width: 0.6, height: 1.2, shape: 'rect' },
+    ],
+    silkscreen: [
+      { x1: -1.5, y1: -0.8, x2: 1.5, y2: -0.8 },
+      { x1: -1.5, y1: 0.8, x2: 1.5, y2: 0.8 },
+      { x1: -1.5, y1: -0.8, x2: -1.5, y2: 0.8 },
+      { x1: 1.5, y1: -0.8, x2: 1.5, y2: 0.8 },
+    ],
+    courtyard: { x: -2.0, y: -2.2, w: 4.0, h: 4.4 },
+  },
 }

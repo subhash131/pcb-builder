@@ -1,6 +1,6 @@
 import { SchematicSymbolDef, PinType } from './schematic/types'
 
-export type SymbolType = "resistor" | "capacitor" | "led" | "ic" | "74HC08" | "74HC32" | "switch" | "resistor_10k" | "resistor_470" | "capacitor_100n" | "led_green" | "led_yellow" | "and_gate" | "or_gate"
+export type SymbolType = "resistor" | "capacitor" | "led" | "ic" | "74HC08" | "74HC32" | "switch" | "push_switch" | "resistor_10k" | "resistor_470" | "capacitor_100n" | "led_green" | "led_yellow" | "and_gate" | "or_gate"
 
 const resistorSymbol: SchematicSymbolDef = {
   id: 'resistor',
@@ -245,7 +245,31 @@ export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
       ],
       circles: [], arcs: [],
     },
-    properties: { reference: 'SW', value: 'Tactile', footprint: 'SW_PUSH_6MM', datasheet: '' },
+    properties: { reference: 'SW', value: 'Slide', footprint: 'HOUSING_DIP_8_W7.62mm', datasheet: '' },
+    boundingBox: { x: 0, y: 0, width: 80, height: 40 },
+  },
+  "push_switch": {
+    id: 'push_switch',
+    pins: [
+      { number: '1', name: '1', type: PinType.PASSIVE, connectionPoint: { x: 0, y: 30 }, bodyEdge: { x: 20, y: 30 }, angle: 0 },
+      { number: '2', name: '2', type: PinType.PASSIVE, connectionPoint: { x: 80, y: 30 }, bodyEdge: { x: 60, y: 30 }, angle: 180 },
+    ],
+    geometry: {
+      rectangles: [],
+      polylines: [
+        { points: [{ x: 0, y: 30 }, { x: 20, y: 30 }] },
+        { points: [{ x: 60, y: 30 }, { x: 80, y: 30 }] },
+        // The "T" plunger/contact
+        { points: [{ x: 20, y: 20 }, { x: 60, y: 20 }] },
+        { points: [{ x: 40, y: 20 }, { x: 40, y: 5 }] },
+      ],
+      circles: [
+        { center: { x: 20, y: 30 }, radius: 3 },
+        { center: { x: 60, y: 30 }, radius: 3 },
+      ], 
+      arcs: [],
+    },
+    properties: { reference: 'SW', value: 'PUSH', footprint: 'SW_PUSH_6MM', datasheet: '' },
     boundingBox: { x: 0, y: 0, width: 80, height: 40 },
   },
   "resistor_10k": {
