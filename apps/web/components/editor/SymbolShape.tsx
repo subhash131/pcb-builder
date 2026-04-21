@@ -83,8 +83,8 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
     // — ERC Logic —
     const ercReport = useSchematicStore((s) => s.ercReport)
     const violations = ercReport?.violations.filter(v => 
-      v.componentRef === shape.id || 
-      v.affectedPins.some(p => p.startsWith(shape.id))
+      v.componentRef === designator || 
+      v.affectedPins.some(p => p.startsWith(`${designator}.`))
     ) || []
     
     const { width: w, height: h } = def.boundingBox
@@ -148,7 +148,7 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
               y: pin.connectionPoint.y - def.boundingBox.y,
             }
             
-            const pinRef = `${shape.id}.pin-${pin.number}`
+            const pinRef = `${designator}.pin-${pin.number}`
             const pinViolation = violations.find(v => v.affectedPins.includes(pinRef))
             const isError = pinViolation?.severity === Severity.ERROR
             const isWarning = pinViolation?.severity === Severity.WARNING

@@ -215,7 +215,7 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const localEdits = useRef<Record<string, number>>({})
 
   // Logic hooks
-  useNetlistSync(editor, connectPins)
+  useNetlistSync(editor)
   const { handleAddComponent } = useLibraryActions(editor)
   const { 
     nearestPin, 

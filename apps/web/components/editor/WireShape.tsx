@@ -3,8 +3,11 @@ import {
   TLBaseShape, 
   HTMLContainer,
   Rectangle2d,
+  useEditor,
+  TLShapeId,
 } from 'tldraw'
 import { useSchematicStore } from '../../store/useSchematicStore'
+import { SymbolShape } from './SymbolShape'
 
 export type WireShape = TLBaseShape<
   'wire',
@@ -59,9 +62,13 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
     const { startBinding, endBinding } = shape.props
     
     // Check if either end of the wire is connected to a net with violations
+    const editor = useEditor()
     const checkNet = (binding: WireShape['props']['startBinding']) => {
       if (!binding) return false
-      const pinRef = `${binding.shapeId}.pin-${binding.pinId.replace('pin-', '')}`
+      const comp = editor.getShape(binding.shapeId as TLShapeId) as SymbolShape | undefined
+      if (!comp) return false
+
+      const pinRef = `${comp.props.designator}.pin-${binding.pinId.replace('pin-', '')}`
       const netId = netlist.getPinNet(pinRef)
       if (!netId) return false
       
