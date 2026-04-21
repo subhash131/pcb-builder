@@ -4,6 +4,7 @@ import {
   HTMLContainer,
   Rectangle2d,
 } from 'tldraw'
+import { useSchematicStore } from '../../store/useSchematicStore'
 
 export type WireShape = TLBaseShape<
   'wire',
@@ -48,7 +49,31 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
 
   override component(shape: WireShape) {
     const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
-    const color = shape.props?.color || '#00aa00';
+    const baseColor = shape.props?.color || '#00aa00';
+    
+    // — ERC Logic —
+    const netlist = useSchematicStore((s) => s.netlist)
+    const ercReport = useSchematicStore((s) => s.ercReport)
+    
+    let isError = false
+    const { startBinding, endBinding } = shape.props
+    
+    // Check if either end of the wire is connected to a net with violations
+    const checkNet = (binding: any) => {
+      if (!binding) return false
+      const pinRef = `${binding.shapeId}.pin-${binding.pinId.replace('pin-', '')}`
+      const netId = netlist.getPinNet(pinRef)
+      if (!netId) return false
+      
+      return ercReport?.violations.some(v => v.netId === netId && v.severity === 'error')
+    }
+    
+    if (checkNet(startBinding) || checkNet(endBinding)) {
+      isError = true
+    }
+
+    const color = isError ? '#ef4444' : baseColor
+
     if (points.length < 1) return null;
 
     const svgPoints = points

@@ -15,6 +15,7 @@ const ercEngine = new ErcEngine()
 
 export function useERC() {
   const netlist      = useSchematicStore(s => s.netlist)
+  const netlistVersion = useSchematicStore(s => s.netlistVersion)
   const setErcReport = useSchematicStore(s => s.setErcReport)
 
   useEffect(() => {
@@ -31,5 +32,5 @@ export function useERC() {
     }, 300)
 
     return () => clearTimeout(timer)
-  }, [netlist, setErcReport])
+  }, [netlist, netlistVersion, setErcReport])
 }

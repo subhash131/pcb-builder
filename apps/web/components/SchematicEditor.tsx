@@ -16,6 +16,7 @@ import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
 import { createContext, useContext, useEffect, useRef } from 'react'
 import { SheetSettings } from './editor/SheetSettings'
+import { ErcReportPanel } from './editor/ErcReportPanel'
 
 const SchematicContext = createContext<Id<"schematics"> | null>(null)
 
@@ -334,6 +335,7 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
         pendingRef={pendingRef}
       />
       <LibrarySidebar onAddComponent={handleAddComponent} />
+      <ErcReportPanel />
     </>
   )
 }
@@ -351,7 +353,14 @@ export default function SchematicEditor({ schematicId }: { schematicId: Id<"sche
           shapeUtils={shapeUtils} 
           className="bg-[#ffffee]" 
           inferDarkMode={false}
-          components={{ OnTheCanvas: KiCadSheet }}
+          components={{ 
+            OnTheCanvas: KiCadSheet,
+            StylePanel: null,
+            PageMenu: null,
+            MainMenu: null,
+            ActionsMenu: null,
+            HelpMenu: null,
+          }}
         >
           <EditorUI schematicId={schematicId} />
         </Tldraw>
