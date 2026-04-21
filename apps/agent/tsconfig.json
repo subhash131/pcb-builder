@@ -1,16 +1,23 @@
 {
   "extends": "@workspace/typescript-config/base.json",
   "compilerOptions": {
-    "module": "NodeNext",
-    "moduleResolution": "NodeNext",
-    "outDir": "./dist",
-    "rootDir": "./src",
+    "noEmit": true,
+    "module": "ESNext",
+    "moduleResolution": "Bundler",
     "target": "ES2022",
     "baseUrl": ".",
     "paths": {
-      "@workspace/backend/*": ["../../packages/backend/convex/*"]
+      "@/*": ["./src/*"],
+      "@workspace/backend/*": ["../../packages/backend/convex/*"],
+      "@workspace/core": ["../../packages/core/src/index.ts"],
+      "@workspace/core/*": ["../../packages/core/src/*"]
     }
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "dist"]
+  "include": [
+    "src/**/*"
+  ],
+  "exclude": [
+    "node_modules",
+    "dist"
+  ]
 }
