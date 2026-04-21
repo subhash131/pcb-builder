@@ -1,5 +1,5 @@
 import Graph from 'graphology';
-import { SerializedGraph } from 'graphology-types';
+import { AbstractGraph, SerializedGraph } from 'graphology-types';
 
 export interface Connection {
   componentId: string;
@@ -7,9 +7,10 @@ export interface Connection {
 }
 
 export class Netlist {
-  private graph: Graph;
+  private graph: AbstractGraph;
 
   constructor() {
+    // Interop for CJS/ESM discrepancy
     this.graph = new Graph();
   }
 

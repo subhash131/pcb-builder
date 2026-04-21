@@ -24,7 +24,7 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
         { x: 0, y: 0 },
         { x: 100, y: 100 },
       ],
-      color: 'black',
+      color: '#00aa00',
       startBinding: null,
       endBinding: null,
     }
@@ -48,7 +48,7 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
 
   override component(shape: WireShape) {
     const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
-    const color = shape.props?.color || 'black';
+    const color = shape.props?.color || '#00aa00';
     if (points.length < 1) return null;
 
     const svgPoints = points
