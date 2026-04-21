@@ -234,3 +234,59 @@ export const updateCamera = mutation({
     });
   },
 });
+
+/**
+ * Applies a batch of sync actions (ADD, REMOVE, UPDATE) from schematic diff.
+ */
+export const applySyncActions = mutation({
+  args: {
+    boardId: v.id("pcb_boards"),
+    actions: v.array(v.object({
+      type: v.string(), // 'add' | 'remove' | 'update'
+      componentRef: v.string(),
+      payload: v.any(),
+    })),
+  },
+  handler: async (ctx, args) => {
+    const { boardId, actions } = args;
+
+    for (const action of actions) {
+      const existing = await ctx.db
+        .query("pcb_footprints")
+        .withIndex("by_ref", (q) => q.eq("boardId", boardId).eq("componentRef", action.componentRef))
+        .unique();
+
+      switch (action.type) {
+        case 'add':
+          if (!existing) {
+            await ctx.db.insert("pcb_footprints", {
+              boardId,
+              componentRef: action.componentRef,
+              footprintId: action.payload.footprintId || "Resistor_SMD:R_0805_2012Metric",
+              x: 0,
+              y: 0,
+              rotation: 0,
+              layer: "F.Cu",
+              isLocked: false,
+            });
+          }
+          break;
+        case 'remove':
+          if (existing) {
+            await ctx.db.delete(existing._id);
+          }
+          break;
+        case 'update':
+          if (existing) {
+            await ctx.db.patch(existing._id, {
+              footprintId: action.payload.new,
+            });
+          }
+          break;
+      }
+    }
+
+    // Update board timestamp
+    await ctx.db.patch(boardId, { updatedAt: Date.now() });
+  },
+});
