@@ -74,19 +74,24 @@ export function useSchematicInteraction(editor: Editor) {
             const dx = Math.abs(oldPoint.x - neighbor.x)
             const dy = Math.abs(oldPoint.y - neighbor.y)
 
-            // If 2 points and moving diagonal: Add elbow
-            if (points.length === 2 && Math.abs(newPoint.x - neighbor.x) > 0.1 && Math.abs(newPoint.y - neighbor.y) > 0.1) {
+            // If only 2 points, we MUST add an elbow to stay orthogonal
+            if (points.length === 2) {
               const elbow = { x: newPoint.x, y: neighbor.y }
               if (targetIndex === 0) result.splice(1, 0, elbow)
               else result.splice(points.length - 1, 0, elbow)
               return result
             }
 
-            // If 3+ points, maintain orthogonality
-            if (dx < 0.1) { // Was Vertical
+            // If 3+ points, maintain orthogonality by adjusting the neighbor
+            // Use a generous delta to identify orientation
+            if (dx < 5) { // Was Vertical
               result[neighborIndex] = { x: newPoint.x, y: neighbor.y }
-            } else if (dy < 0.1) { // Was Horizontal
+            } else if (dy < 5) { // Was Horizontal
               result[neighborIndex] = { x: neighbor.x, y: newPoint.y }
+            } else {
+              // Fallback: If for some reason it wasn't orthogonal, force an elbow
+              const elbow = { x: newPoint.x, y: neighbor.y }
+              result.splice(targetIndex === 0 ? 1 : points.length - 1, 0, elbow)
             }
             return result
           }
@@ -163,11 +168,14 @@ export function useSchematicInteraction(editor: Editor) {
       const dx = Math.abs(x - lastPoint.x)
       const dy = Math.abs(y - lastPoint.y)
       
-      // If we are already aligned, just return the point
-      if (dx < 1 || dy < 1) return [{ x, y }]
+      // If we are already aligned (within a small threshold), force exact alignment
+      // Use a slightly larger epsilon (2 units) to prevent jittery diagonals
+      const EPSILON = 2
+      if (dx < EPSILON) return [{ x: lastPoint.x, y }]
+      if (dy < EPSILON) return [{ x, y: lastPoint.y }]
 
-      // Calculate elbow: prefer horizontal then vertical if dx > dy, or based on previous segment
-      // For simplicity, we use the larger delta to decide the first segment direction
+      // Calculate elbow: maintain orthogonality
+      // Prefer the direction of the largest delta for the first segment
       const elbow = dx > dy ? { x, y: lastPoint.y } : { x: lastPoint.x, y }
       
       return [elbow, { x, y }]

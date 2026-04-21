@@ -5,8 +5,9 @@ import {
   TLBaseShape,
   TLHandle,
 } from 'tldraw'
-import { SymbolRegistry, SchematicSymbolDef } from '@workspace/core'
+import { SymbolRegistry, SchematicSymbolDef, Severity } from '@workspace/core'
 import { GenericSymbolRenderer } from './GenericSymbolRenderer'
+import { useSchematicStore } from '../../store/useSchematicStore'
 
 // ── Shape type ────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,13 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
     const { symbolId, designator, value } = shape.props
     const def = this.getSymbolDef(shape)
     
+    // — ERC Logic —
+    const ercReport = useSchematicStore((s) => s.ercReport)
+    const violations = ercReport?.violations.filter(v => 
+      v.componentRef === shape.id || 
+      v.affectedPins.some(p => p.startsWith(shape.id))
+    ) || []
+    
     const { width: w, height: h } = def.boundingBox
 
     // Label positions driven from bounding box
@@ -134,24 +142,53 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
               x: pin.connectionPoint.x - def.boundingBox.x,
               y: pin.connectionPoint.y - def.boundingBox.y,
             }
+            
+            const pinRef = `${shape.id}.pin-${pin.number}`
+            const pinViolation = violations.find(v => v.affectedPins.includes(pinRef))
+            const isError = pinViolation?.severity === Severity.ERROR
+            const isWarning = pinViolation?.severity === Severity.WARNING
+
             return (
-              <div
-                key={pin.number}
-                className="pointer-events-auto cursor-crosshair"
-                style={{
-                  position: 'absolute',
-                  left: `${pos.x}px`,
-                  top: `${pos.y}px`,
-                  width: '8px',
-                  height: '8px',
-                  backgroundColor: 'black',
-                  borderRadius: '50%',
-                  transform: 'translate(-50%, -50%)',
-                  zIndex: 10,
-                  border: '2px solid white',
-                  boxShadow: '0 0 0 1px black',
-                }}
-              />
+              <div key={pin.number}>
+                <div
+                  className="pointer-events-auto cursor-crosshair"
+                  style={{
+                    position: 'absolute',
+                    left: `${pos.x}px`,
+                    top: `${pos.y}px`,
+                    width: '8px',
+                    height: '8px',
+                    backgroundColor: 'black',
+                    borderRadius: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    zIndex: 10,
+                    border: '2px solid white',
+                    boxShadow: '0 0 0 1px black',
+                  }}
+                />
+                {(isError || isWarning) && (
+                  <div
+                    style={{
+                      position: 'absolute',
+                      left: `${pos.x}px`,
+                      top: `${pos.y - 12}px`,
+                      transform: 'translateX(-50%)',
+                      backgroundColor: isError ? '#ef4444' : '#f59e0b',
+                      color: 'white',
+                      fontSize: '10px',
+                      fontWeight: 'bold',
+                      padding: '1px 3px',
+                      borderRadius: '3px',
+                      pointerEvents: 'none',
+                      zIndex: 20,
+                      boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+                      animation: 'pulse 2s infinite'
+                    }}
+                  >
+                    !
+                  </div>
+                )}
+              </div>
             )
           })}
         </div>
