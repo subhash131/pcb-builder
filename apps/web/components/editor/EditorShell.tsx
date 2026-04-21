@@ -57,20 +57,9 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
     }
   }
   
-  const syncPCB = useMutation(api.pcb.syncFromSchematic)
+  // const syncPCB = useMutation(api.pcb.syncFromSchematic)
   
-  const handleTabChange = async (tab: 'schematic' | 'pcb' | '3d') => {
-    if (tab === 'pcb') {
-      // Sync netlist to PCB backend before switching
-      try {
-        await syncPCB({ 
-          schematicId, 
-          netlist: netlist.toJSON() 
-        })
-      } catch (err) {
-        console.error("Failed to sync PCB:", err)
-      }
-    }
+  const handleTabChange = (tab: 'schematic' | 'pcb' | '3d') => {
     setActiveTab(tab)
   }
 
@@ -93,7 +82,7 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
               Schematic
             </button>
             <button
-              onClick={() => setActiveTab('pcb')}
+              onClick={() => handleTabChange('pcb')}
               className={`px-4 h-full flex items-center gap-2 text-sm font-medium transition-colors border-b-2 relative ${
                 activeTab === 'pcb' 
                   ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
@@ -102,14 +91,6 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
             >
               <Cpu className="w-4 h-4" />
               PCB Layout
-              {syncReport.hasChanges && (
-                <Badge 
-                  variant={syncReport.destructive ? "destructive" : "secondary"}
-                  className="ml-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px]"
-                >
-                  {syncReport.actions.length}
-                </Badge>
-              )}
             </button>
             <button 
               onClick={() => handleTabChange('3d')}
@@ -122,7 +103,7 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
         </div>
 
         <div className="flex items-center gap-2">
-          {activeTab === 'pcb' && syncReport.hasChanges && (
+          {activeTab === 'pcb' && (
             <Button
               size="sm"
               variant="outline"
@@ -130,7 +111,7 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
               onClick={() => setIsSyncDialogOpen(true)}
             >
               <RefreshCw className="w-3.5 h-3.5" />
-              Update from Schematic
+              Import from Schematic
             </Button>
           )}
           <button className="p-2 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-md transition-colors">

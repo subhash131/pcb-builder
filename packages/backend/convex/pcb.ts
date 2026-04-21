@@ -244,6 +244,7 @@ export const applySyncActions = mutation({
     actions: v.array(v.object({
       type: v.string(), // 'add' | 'remove' | 'update'
       componentRef: v.string(),
+      detail: v.string(),
       payload: v.any(),
     })),
   },
@@ -288,5 +289,17 @@ export const applySyncActions = mutation({
 
     // Update board timestamp
     await ctx.db.patch(boardId, { updatedAt: Date.now() });
+  },
+});
+
+/**
+ * Deletes multiple footprints by ID.
+ */
+export const deleteFootprints = mutation({
+  args: { ids: v.array(v.id("pcb_footprints")) },
+  handler: async (ctx, args) => {
+    for (const id of args.ids) {
+      await ctx.db.delete(id);
+    }
   },
 });

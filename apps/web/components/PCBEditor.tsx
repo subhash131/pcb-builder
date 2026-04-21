@@ -164,6 +164,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
   const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip" as any)
   const updateFootprints = useMutation(api.pcb.updateFootprints)
+  const deleteFootprints = useMutation(api.pcb.deleteFootprints)
 
   // Track pending updates to avoid cursor fighting
   const pendingUpdates = useRef<Map<string, { x: number, y: number, rotation: number }>>(new Map())
@@ -290,28 +291,48 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
       console.error("Failed to update footprints", err)
     }
   }, 500), [updateFootprints])
+  
+  const pushDeletions = useMemo(() => debounce(async (ids: Id<"pcb_footprints">[]) => {
+    if (ids.length === 0) return
+    console.log(`[PCB] Pushing ${ids.length} footprint deletions to DB`)
+    try {
+      await deleteFootprints({ ids })
+    } catch (err) {
+      console.error("Failed to delete footprints", err)
+    }
+  }, 500), [deleteFootprints])
 
   useEffect(() => {
     const cleanup = editor.store.listen(({ changes }) => {
-      const batch: any[] = []
+      const updates: any[] = []
+      const deletions: Id<"pcb_footprints">[] = []
+
+      // Handle updates
       Object.keys(changes.updated).forEach((id) => {
         const next = editor.getShape(id as any)
         if (next?.type === 'footprint') {
           const dbId = next.id.replace('shape:footprint-', '')
-          const update = {
+          updates.push({
             id: dbId as Id<"pcb_footprints">,
             x: pxToMm(next.x),
             y: pxToMm(next.y),
             rotation: (next.rotation * 180) / Math.PI
-          }
-          batch.push(update)
+          })
           pendingUpdates.current.set(id, { x: next.x, y: next.y, rotation: next.rotation })
         }
       })
 
-      if (batch.length > 0) {
-        pushUpdates(batch)
-      }
+      // Handle deletions
+      Object.keys(changes.removed).forEach((id) => {
+        const shape = changes.removed[id] as any
+        if (shape?.type === 'footprint') {
+          const dbId = shape.id.replace('shape:footprint-', '')
+          deletions.push(dbId as Id<"pcb_footprints">)
+        }
+      })
+
+      if (updates.length > 0) pushUpdates(updates)
+      if (deletions.length > 0) pushDeletions(deletions)
     }, { source: 'user', scope: 'document' })
 
     return () => {
