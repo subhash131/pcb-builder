@@ -6,6 +6,9 @@ export default defineSchema({
     name: v.string(),
     description: v.optional(v.string()),
     lastUpdated: v.number(),
+    sheetWidth: v.optional(v.number()),
+    sheetHeight: v.optional(v.number()),
+    sheetPreset: v.optional(v.string()),
   }),
 
   shapes: defineTable({

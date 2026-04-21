@@ -11,11 +11,49 @@ import { ProximityHotspot } from './editor/ProximityHotspot'
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
-import { useEffect, useRef } from 'react'
+import { createContext, useContext, useEffect, useRef } from 'react'
+import { SheetSettings } from './editor/SheetSettings'
+
+const SchematicContext = createContext<Id<"schematics"> | null>(null)
 
 const shapeUtils = [SymbolShapeUtil, WireShapeUtil]
 
+export const PAGE_PRESETS = {
+  'A5': { width: 2100, height: 1480, name: 'A5' },
+  'A4': { width: 2970, height: 2100, name: 'A4' },
+  'A3': { width: 4200, height: 2970, name: 'A3' },
+  'A2': { width: 5940, height: 4200, name: 'A2' },
+  'A1': { width: 8410, height: 5940, name: 'A1' },
+  'A0': { width: 11890, height: 8410, name: 'A0' },
+  'ANSI A': { width: 2794, height: 2159, name: 'ANSI A' },
+  'ANSI B': { width: 4318, height: 2794, name: 'ANSI B' },
+  'ANSI C': { width: 5588, height: 4318, name: 'ANSI C' },
+  'ANSI D': { width: 8636, height: 5588, name: 'ANSI D' },
+  'ANSI E': { width: 11176, height: 8636, name: 'ANSI E' },
+  'Custom': { width: 2970, height: 2100, name: 'Custom' },
+}
+
 const KiCadSheet = () => {
+  const schematicId = useContext(SchematicContext)
+  const schematic = useQuery(api.schematics.getById, schematicId ? { id: schematicId } : "skip" as any)
+
+  if (!schematicId) return null
+
+  const width = schematic?.sheetWidth ?? 2970
+  const height = schematic?.sheetHeight ?? 2100
+  const presetName = schematic?.sheetPreset ?? 'A4'
+
+  const PAGE_W = width
+  const PAGE_H = height
+  const MARGIN = 100
+  const FRAME_W = 40 // Space between the two red lines for labels
+  
+  const hParts = width > 5000 ? 20 : 10
+  const vParts = height > 4000 ? 14 : 7
+
+  const innerW = PAGE_W - (MARGIN * 2)
+  const innerH = PAGE_H - (MARGIN * 2)
+
   return (
     <div
       style={{
@@ -23,34 +61,104 @@ const KiCadSheet = () => {
         pointerEvents: 'none',
         left: 0,
         top: 0,
-        width: 2970,
-        height: 2100,
-        border: '4px solid #cc0000',
+        width: PAGE_W,
+        height: PAGE_H,
+        border: '2px dashed #d0d0d0', // Physical sheet edge
         boxSizing: 'border-box'
       }}
     >
+      {/* Outer Frame Line */}
+      <div style={{
+        position: 'absolute',
+        left: MARGIN,
+        top: MARGIN,
+        width: PAGE_W - (MARGIN * 2),
+        height: PAGE_H - (MARGIN * 2),
+        border: '3px solid #cc0000',
+        boxSizing: 'border-box'
+      }} />
+
+      {/* Inner Frame Line */}
+      <div style={{
+        position: 'absolute',
+        left: MARGIN + FRAME_W,
+        top: MARGIN + FRAME_W,
+        width: PAGE_W - (MARGIN * 2) - (FRAME_W * 2),
+        height: PAGE_H - (MARGIN * 2) - (FRAME_W * 2),
+        border: '1px solid #cc0000',
+        boxSizing: 'border-box'
+      }} />
+
+      {/* Horizontal Scale Labels */}
+      {Array.from({ length: hParts }).map((_, i) => {
+        const xPos = MARGIN + FRAME_W + ((innerW - FRAME_W * 2) / hParts) * (i + 0.5)
+        const tickX = MARGIN + FRAME_W + ((innerW - FRAME_W * 2) / hParts) * (i + 1)
+        return (
+          <div key={`h-${i}`}>
+            {/* Top labels */}
+            <div style={{ position: 'absolute', top: MARGIN + 4, left: xPos, transform: 'translateX(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{i + 1}</div>
+            {/* Bottom labels */}
+            <div style={{ position: 'absolute', bottom: MARGIN + 4, left: xPos, transform: 'translateX(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{i + 1}</div>
+            {/* Ticks */}
+            {i < hParts - 1 && (
+              <>
+                <div style={{ position: 'absolute', top: MARGIN, left: tickX, width: 2, height: FRAME_W, backgroundColor: '#cc0000' }} />
+                <div style={{ position: 'absolute', bottom: MARGIN, left: tickX, width: 2, height: FRAME_W, backgroundColor: '#cc0000' }} />
+              </>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Vertical Scale Labels */}
+      {Array.from({ length: vParts }).map((_, i) => {
+        const yPos = MARGIN + FRAME_W + ((innerH - FRAME_W * 2) / vParts) * (i + 0.5)
+        const tickY = MARGIN + FRAME_W + ((innerH - FRAME_W * 2) / vParts) * (i + 1)
+        return (
+          <div key={`v-${i}`}>
+            {/* Left labels */}
+            <div style={{ position: 'absolute', left: MARGIN + 8, top: yPos, transform: 'translateY(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{String.fromCharCode(65 + i)}</div>
+            {/* Right labels */}
+            <div style={{ position: 'absolute', right: MARGIN + 8, top: yPos, transform: 'translateY(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{String.fromCharCode(65 + i)}</div>
+            {/* Ticks */}
+            {i < vParts - 1 && (
+              <>
+                <div style={{ position: 'absolute', left: MARGIN, top: tickY, height: 2, width: FRAME_W, backgroundColor: '#cc0000' }} />
+                <div style={{ position: 'absolute', right: MARGIN, top: tickY, height: 2, width: FRAME_W, backgroundColor: '#cc0000' }} />
+              </>
+            )}
+          </div>
+        )
+      })}
+
+      {/* Title Block - Adjusted to sit inside the inner frame */}
       <div 
         style={{
           position: 'absolute',
-          bottom: 0,
-          right: 0,
-          width: 400,
-          height: 150,
-          borderTop: '4px solid #cc0000',
-          borderLeft: '4px solid #cc0000',
+          bottom: MARGIN + FRAME_W,
+          right: MARGIN + FRAME_W,
+          width: 450,
+          height: 220,
+          borderTop: '2px solid #cc0000',
+          borderLeft: '2px solid #cc0000',
           display: 'flex',
           flexDirection: 'column',
           backgroundColor: 'transparent'
         }}
       >
-        <div style={{ flex: 1, borderBottom: '4px solid #cc0000', padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
-          <strong>Title:</strong>&nbsp;AI Schematic Editor
+        <div style={{ flex: 1.5, borderBottom: '1px solid #cc0000', padding: '12px 16px', color: '#cc0000', fontFamily: 'monospace', fontSize: 22, display: 'flex', alignItems: 'center' }}>
+          <strong>TITLE:</strong>&nbsp;AI SCHEMATIC ASSISTANT
         </div>
-        <div style={{ flex: 1, borderBottom: '4px solid #cc0000', padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
-          <strong>Size:</strong>&nbsp;A4
+        <div style={{ display: 'flex', flex: 1, borderBottom: '1px solid #cc0000' }}>
+          <div style={{ flex: 1, borderRight: '1px solid #cc0000', padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 16, display: 'flex', alignItems: 'center' }}>
+            <strong>SIZE:</strong>&nbsp;{presetName}
+          </div>
+          <div style={{ flex: 1, padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 16, display: 'flex', alignItems: 'center' }}>
+            <strong>SCALE:</strong>&nbsp;1:1
+          </div>
         </div>
-        <div style={{ flex: 1, padding: 8, color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
-          <strong>Rev:</strong>&nbsp;1.0
+        <div style={{ flex: 1, padding: '8px 16px', color: '#cc0000', fontFamily: 'monospace', fontSize: 18, display: 'flex', alignItems: 'center' }}>
+          <strong>REV:</strong>&nbsp;v1.0.42
         </div>
       </div>
     </div>
@@ -59,9 +167,12 @@ const KiCadSheet = () => {
 
 function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const editor = useEditor()
+
   const connectPins = useBoardStore((s) => s.connectPins)
   const syncRecords = useMutation(api.schematics.sync)
   
+  const schematic = useQuery(api.schematics.getById, { id: schematicId })
+
   // isHydrated: true once the initial DB load is complete
   const isHydrated = useRef(false)
   // Track IDs and timestamps of things the LOCAL user has touched
@@ -199,6 +310,12 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
 
   return (
     <>
+      <SheetSettings 
+        schematicId={schematicId}
+        currentPreset={schematic?.sheetPreset}
+        currentWidth={schematic?.sheetWidth}
+        currentHeight={schematic?.sheetHeight}
+      />
       <ProximityHotspot 
         editor={editor}
         nearestPin={nearestPin}
@@ -219,14 +336,16 @@ export default function SchematicEditor({ schematicId }: { schematicId: Id<"sche
 
   return (
     <div className="fixed inset-0" style={{ '--color-grid': '#d0d0d0' } as React.CSSProperties}>
-      <Tldraw 
-        shapeUtils={shapeUtils} 
-        className="bg-[#ffffee]" 
-        inferDarkMode={false}
-        components={{ OnTheCanvas: KiCadSheet }}
-      >
-        <EditorUI schematicId={schematicId} />
-      </Tldraw>
+      <SchematicContext.Provider value={schematicId}>
+        <Tldraw 
+          shapeUtils={shapeUtils} 
+          className="bg-[#ffffee]" 
+          inferDarkMode={false}
+          components={{ OnTheCanvas: KiCadSheet }}
+        >
+          <EditorUI schematicId={schematicId} />
+        </Tldraw>
+      </SchematicContext.Provider>
     </div>
   )
 }
