@@ -37,7 +37,7 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
   }
 
   return (
-    <div className="fixed bottom-4 left-4 z-[9999]">
+    <div className="fixed bottom-4 left-4 z-9999">
       <button 
         onClick={() => setIsOpen(!isOpen)}
         className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-slate-600 shadow-lg hover:bg-slate-50 transition-all border border-slate-200"
