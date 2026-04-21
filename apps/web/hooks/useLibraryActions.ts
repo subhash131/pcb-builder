@@ -5,8 +5,8 @@ import { useBoardStore } from '../store/useBoardStore'
 export function useLibraryActions(editor: Editor) {
   const addComponent = useBoardStore((s) => s.addComponent)
 
-  const handleAddComponent = (type: 'resistor' | 'capacitor' | 'led') => {
-    const def = SYMBOL_DEFS[type as SymbolType]
+  const handleAddComponent = (type: SymbolType) => {
+    const def = SYMBOL_DEFS[type]
     const componentId = createShapeId()
 
     const component = new Component(

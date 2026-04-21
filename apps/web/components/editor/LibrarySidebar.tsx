@@ -1,5 +1,7 @@
+import { SymbolType } from '@workspace/core'
+
 interface LibrarySidebarProps {
-  onAddComponent: (type: 'resistor' | 'capacitor' | 'led') => void
+  onAddComponent: (type: SymbolType) => void
 }
 
 export function LibrarySidebar({ onAddComponent }: LibrarySidebarProps) {

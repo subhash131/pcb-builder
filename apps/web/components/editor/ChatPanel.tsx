@@ -125,7 +125,7 @@ export function ChatPanel({ schematicId }: { schematicId: Id<"schematics"> }) {
       initial={{ opacity: 0, scale: 0.9, y: 20 }}
       animate={{ opacity: 1, scale: 1, y: 0 }}
       exit={{ opacity: 0, scale: 0.9, y: 20 }}
-      className="fixed z-50 shadow-2xl rounded-xl border bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 overflow-hidden flex flex-col"
+      className="fixed z-50 shadow-2xl rounded-xl border bg-background/95 backdrop-blur supports-backdrop-filter:bg-background/60 overflow-hidden flex flex-col"
       style={{
         width: 380,
         height: 600,
