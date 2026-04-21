@@ -122,6 +122,10 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
     )
   }
 
+  override canResize() {
+    return false
+  }
+
   override indicator(shape: WireShape) {
     const points = shape.props?.points || [{ x: 0, y: 0 }, { x: 0, y: 0 }];
     const svgPoints = points

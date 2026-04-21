@@ -69,6 +69,11 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
     return true
   }
 
+  override canResize() {
+    return false
+  }
+
+
   // ── Renderer ───────────────────────────────────────────────────────────────
 
   override component(shape: SymbolShape) {

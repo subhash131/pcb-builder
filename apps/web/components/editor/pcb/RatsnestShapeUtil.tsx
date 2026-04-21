@@ -60,6 +60,10 @@ export class RatsnestShapeUtil extends ShapeUtil<RatsnestShape> {
     )
   }
 
+  override canResize() {
+    return false
+  }
+
   override indicator(shape: RatsnestShape) {
     return null
   }
