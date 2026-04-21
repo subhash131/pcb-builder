@@ -26,6 +26,12 @@ export function LibrarySidebar({ onAddComponent }: LibrarySidebarProps) {
       >
         + LED
       </button>
+      <button 
+        onClick={() => onAddComponent('ic')} 
+        className="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded hover:bg-black transition text-left"
+      >
+        IC
+      </button>
     </div>
   )
 }
