@@ -36,7 +36,7 @@ export function SyncDialog({
         <DialogHeader>
           <DialogTitle className="text-xl font-bold flex items-center gap-2">
             <RefreshCw className="w-5 h-5 text-blue-400" />
-            Update PCB from Schematic
+            Import from Schematic
           </DialogTitle>
           <DialogDescription className="text-slate-400">
             Reconcile logical changes from the schematic into your physical PCB layout.
