@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Id } from '@workspace/backend/_generated/dataModel'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@workspace/backend/_generated/api'
@@ -21,16 +21,22 @@ const SchematicEditor = dynamic(() => import('../SchematicEditor'), { ssr: false
 const PCBEditor = dynamic(() => import('../PCBEditor'), { ssr: false })
 
 export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) {
+  const [mounted, setMounted] = useState(false)
   const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false)
   const [isApplying, setIsApplying] = useState(false)
   
   const activeTab = useEditorStore(s => s.activeTab)
   const setActiveTab = useEditorStore(s => s.setActiveTab)
+
+  useEffect(() => {
+    setMounted(true)
+  }, [])
+
   const netlist = useSchematicStore(s => s.netlist)
 
   // Fetch PCB board and footprints
   const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
-  const footprints = useQuery(api.pcb.getFootprints, { boardId: board?._id as any })
+  const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip")
   const applySyncActions = useMutation(api.pcb.applySyncActions)
 
   // Compute sync report
@@ -62,6 +68,8 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
   const handleTabChange = (tab: 'schematic' | 'pcb' | '3d') => {
     setActiveTab(tab)
   }
+
+  if (!mounted) return <div className="flex h-screen w-screen bg-slate-950 items-center justify-center text-slate-500 font-mono text-xs uppercase tracking-widest animate-pulse">Initializing Layout...</div>
 
   return (
     <div className="flex flex-col h-screen w-screen overflow-hidden bg-slate-900 text-slate-200">

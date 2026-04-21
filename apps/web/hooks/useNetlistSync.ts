@@ -1,5 +1,7 @@
 import { useEffect } from 'react'
-import { Editor, TLShape } from 'tldraw'
+import { Editor, TLShape, TLShapeId } from 'tldraw'
+import { WireShape } from '../components/editor/WireShape'
+import { SymbolShape } from '../components/editor/SymbolShape'
 
 export function useNetlistSync(
   editor: Editor,
@@ -7,16 +9,16 @@ export function useNetlistSync(
 ) {
   useEffect(() => {
     // @ts-ignore
-    const cleanup = editor.sideEffects?.registerAfterChangeHandler?.('shape', (prev: any, next: any, source: any) => {
+    const cleanup = editor.sideEffects?.registerAfterChangeHandler?.('shape', (prev: TLShape, next: TLShape, _source: string) => {
       // Allow syncing from AI API drops as well by relaxing source constraints
       if (!next || next.type !== 'wire') return
-
-      const wire = next
-      const props = wire.props as any
+      
+      const wire = next as WireShape
+      const props = wire.props
       if (!props.startBinding || !props.endBinding) return
 
-      const compA = editor.getShape(props.startBinding.shapeId) as TLShape & { props: any }
-      const compB = editor.getShape(props.endBinding.shapeId) as TLShape & { props: any }
+      const compA = editor.getShape(props.startBinding.shapeId as TLShapeId) as SymbolShape | undefined
+      const compB = editor.getShape(props.endBinding.shapeId as TLShapeId) as SymbolShape | undefined
       
       if (compA?.type === 'symbol' && compB?.type === 'symbol') {
         const pinA = props.startBinding.pinId

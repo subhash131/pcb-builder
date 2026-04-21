@@ -1,35 +1,68 @@
-import { Netlist } from '@workspace/core';
-import { computeRatsnestMST, RatsnestLine } from '@workspace/core';
+import { Netlist, FOOTPRINT_DEFS, computeRatsnestMST, RatsnestLine } from '@workspace/core';
 
 export type { RatsnestLine };
+
+export interface FootprintDB {
+  _id: string;
+  componentRef: string;
+  footprintId: string;
+  x: number;
+  y: number;
+  rotation: number;
+  layer: 'F.Cu' | 'B.Cu';
+}
 
 /**
  * Derives the ratsnest from a schematic netlist and current footprint placements.
  *
  * Pad positions are keyed by "componentRef.pinNumber" (e.g. "R1.1"), which are
- * sourced directly from the footprint placements stored in the DB.
- * For this iteration, each pad is centered at the footprint origin.
- * When a library is added in Phase 3, this will look up the pad offset from the footprint def.
+ * sourced from the footprint placements and their geometric definitions.
  */
 export function computeRatsnest(
   netlist: Netlist,
-  footprints: any[] // pcb_footprints from Convex
+  footprints: FootprintDB[] // pcb_footprints from Convex
 ): RatsnestLine[] {
   if (!netlist || !footprints?.length) return [];
 
   // Build pad position map: "R1.1" → { x, y, padRef }
   const padPositions = new Map<string, { x: number; y: number; padRef: string }>();
+  
   for (const fp of footprints) {
+    // 1. Resolve geometry for this footprint
+    // In Convex, footprintId might be "Resistor_SMD:R_0805_2012Metric"
+    // We need to map it to our internal registry keys (R0603, R0805, etc.)
+    let defKey = fp.footprintId;
+    if (defKey.includes('0603')) defKey = 'R0603';
+    else if (defKey.includes('0805')) defKey = 'R0805';
+    else if (defKey.includes('DIP')) defKey = 'DIP8';
+    
+    const def = FOOTPRINT_DEFS[defKey] || FOOTPRINT_DEFS['R0603'];
+    
     // Resolve all pins for this component from the netlist
     const pins = netlist.getComponentPins(fp.componentRef);
+    
     for (const pin of pins) {
+      // Find the pad definition for this pin number
+      const padDef = def?.pads.find(p => p.number === pin.pinNumber);
+      if (!padDef) continue;
+
       // Key: "componentRef.pinNumber" — matches PinNode.ref after normalization
       const key = `${fp.componentRef}.${pin.pinNumber}`;
-      padPositions.set(key, { x: fp.x, y: fp.y, padRef: key });
+      
+      // Calculate absolute position: fp center + pad offset
+      // Note: rotation needs to be accounted for if it's non-zero
+      const rad = (fp.rotation * Math.PI) / 180;
+      const rotatedX = padDef.x * Math.cos(rad) - padDef.y * Math.sin(rad);
+      const rotatedY = padDef.x * Math.sin(rad) + padDef.y * Math.cos(rad);
+
+      padPositions.set(key, { 
+        x: fp.x + rotatedX, 
+        y: fp.y + rotatedY, 
+        padRef: key 
+      });
     }
   }
 
   const nets = netlist.getNets();
   return computeRatsnestMST(nets, padPositions);
 }
-

@@ -1,12 +1,13 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.js";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel.js";
 
 /**
  * Fetches all schematic documents.
  */
 export const list = query({
   args: {},
-  handler: async (ctx) => {
+  handler: async (ctx: QueryCtx, args: {}) => {
     return await ctx.db.query("schematics").collect();
   },
 });
@@ -16,7 +17,7 @@ export const list = query({
  */
 export const getById = query({
   args: { id: v.id("schematics") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: { id: Id<"schematics"> }) => {
     return await ctx.db.get(args.id);
   },
 });
@@ -26,15 +27,15 @@ export const getById = query({
  */
 export const getRecords = query({
   args: { schematicId: v.id("schematics") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: { schematicId: Id<"schematics"> }) => {
     const shapes = await ctx.db
       .query("shapes")
-      .withIndex("by_schematicId", (q) => q.eq("schematicId", args.schematicId))
+      .withIndex("by_schematicId", (q: any) => q.eq("schematicId", args.schematicId))
       .collect();
 
     const bindings = await ctx.db
       .query("bindings")
-      .withIndex("by_schematicId", (q) => q.eq("schematicId", args.schematicId))
+      .withIndex("by_schematicId", (q: any) => q.eq("schematicId", args.schematicId))
       .collect();
 
     return { shapes, bindings };
@@ -46,7 +47,7 @@ export const getRecords = query({
  */
 export const create = mutation({
   args: { name: v.string(), description: v.optional(v.string()) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { name: string; description?: string }) => {
     return await ctx.db.insert("schematics", {
       name: args.name,
       description: args.description,
@@ -65,16 +66,16 @@ export const sync = mutation({
     updates: v.array(v.any()), // Array of tldraw records
     deletions: v.array(v.string()), // Array of tldrawIds (e.g. "shape:abc")
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { schematicId: Id<"schematics">; updates: any[]; deletions: string[] }) => {
     const { schematicId, updates, deletions } = args;
 
     // Handle Deletions
     for (const tldrawId of deletions) {
       if (typeof tldrawId !== "string") continue;
-      const table = tldrawId.startsWith('shape') ? 'shapes' : 'bindings';
+      const table = tldrawId.startsWith('shape') ? 'shapes' : 'bindings' as any;
       const existing = await ctx.db
         .query(table)
-        .withIndex("by_tldrawId_schematicId", (q) => q.eq("tldrawId", tldrawId).eq("schematicId", schematicId))
+        .withIndex("by_tldrawId_schematicId", (q: any) => q.eq("tldrawId", tldrawId).eq("schematicId", schematicId))
         .unique();
       if (existing) {
         await ctx.db.delete(existing._id);
@@ -164,7 +165,7 @@ export const updateSheet = mutation({
     height: v.number(),
     preset: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { id: Id<"schematics">; width: number; height: number; preset: string }) => {
     return await ctx.db.patch(args.id, {
       sheetWidth: args.width,
       sheetHeight: args.height,
@@ -183,7 +184,7 @@ export const updateCamera = mutation({
     y: v.number(),
     zoom: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { id: Id<"schematics">; x: number; y: number; zoom: number }) => {
     return await ctx.db.patch(args.id, {
       cameraX: args.x,
       cameraY: args.y,

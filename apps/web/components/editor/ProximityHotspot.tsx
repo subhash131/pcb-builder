@@ -1,12 +1,15 @@
 import { Editor } from 'tldraw'
 import { CameraTracker } from './CameraTracker'
 
+type NearestPin = { x: number, y: number, shapeId: string, pinId: string } | null
+type PendingPin = { x: number, y: number, pinId: string, startPoint: {x: number, y: number}, shapeId: string } | null
+
 interface ProximityHotspotProps {
   editor: Editor
-  nearestPin: { x: number, y: number, shapeId: string, pinId: string } | null
-  nearestPinRef: React.MutableRefObject<any>
-  setPendingStartPin: (pending: any) => void
-  pendingRef: React.MutableRefObject<any>
+  nearestPin: NearestPin
+  nearestPinRef: React.MutableRefObject<NearestPin>
+  setPendingStartPin: (pending: PendingPin) => void
+  pendingRef: React.MutableRefObject<PendingPin>
 }
 
 export function ProximityHotspot({ 

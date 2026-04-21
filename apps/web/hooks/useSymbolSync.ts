@@ -1,5 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { Editor } from 'tldraw'
+import { Editor, TLShapeId, TLShape } from 'tldraw'
+import { SymbolShape } from '../components/editor/SymbolShape'
 import { SymbolRegistry } from '@workspace/core'
 import { useSchematicStore } from '../store/useSchematicStore'
 import { useBoardStore } from '../store/useBoardStore'
@@ -25,10 +26,11 @@ export function useSymbolSync(editor: Editor) {
     const syncSymbols = () => {
       const symbols = editor.getCurrentPageShapes().filter(s => s.type === 'symbol')
       
-      symbols.forEach((shape: any) => {
+      symbols.forEach((shape: TLShape) => {
         if (registeredIds.current.has(shape.id)) return
 
-        const { symbolId, designator, value } = shape.props
+        const symbol = shape as SymbolShape
+        const { symbolId, designator, value } = symbol.props
         const def = registry.get(symbolId)
         if (!def) return
 
@@ -47,12 +49,14 @@ export function useSymbolSync(editor: Editor) {
           value,
           def.properties.footprint
         )
-        def.pins.forEach(p => component.addPin({
-          id: `pin-${p.number}`,
-          name: p.name,
-          number: p.number,
-          type: p.type
-        }))
+        def.pins.forEach((p) =>
+          component.addPin({ 
+            id: `pin-${p.number}`, 
+            name: p.name, 
+            number: p.number, 
+            type: p.type
+          })
+        )
         addComponentPCB(component)
 
         registeredIds.current.add(shape.id)
