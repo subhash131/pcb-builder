@@ -31,7 +31,7 @@ const SchematicContext = createContext<Id<"schematics"> | null>(null)
 
 const shapeUtils = [SymbolShapeUtil, WireShapeUtil]
 
-import { mmToPx } from '@workspace/core'
+import { mmToPx, SCHEMATIC_MM_TO_PX } from '@workspace/core'
 
 export const PAGE_PRESETS = {
   'A5': { width: 210, height: 148, name: 'A5' },
@@ -62,13 +62,13 @@ const KiCadSheet = () => {
   if (rawWidth > 1500) rawWidth = rawWidth / 10
   if (rawHeight > 1500) rawHeight = rawHeight / 10
 
-  const PAGE_W = mmToPx(rawWidth)
-  const PAGE_H = mmToPx(rawHeight)
-  const MARGIN = mmToPx(10) // 10mm margin
-  const FRAME_W = mmToPx(4)  // 4mm label frame
+  const PAGE_W = mmToPx(rawWidth, 'schematic')
+  const PAGE_H = mmToPx(rawHeight, 'schematic')
+  const MARGIN = mmToPx(10, 'schematic') // 10mm margin
+  const FRAME_W = mmToPx(4, 'schematic')  // 4mm label frame
   
   // 1 division = 50 mm
-  const DIVISION_SIZE = mmToPx(50) 
+  const DIVISION_SIZE = mmToPx(50, 'schematic') 
   const innerW = PAGE_W - (MARGIN * 2)
   const innerH = PAGE_H - (MARGIN * 2)
   const usableW = innerW - FRAME_W * 2

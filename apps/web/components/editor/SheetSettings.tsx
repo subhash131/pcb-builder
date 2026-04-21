@@ -4,6 +4,7 @@ import { api } from '@workspace/backend/_generated/api'
 import { Id } from '@workspace/backend/_generated/dataModel'
 import { PAGE_PRESETS } from '../SchematicEditor'
 import { Settings2 } from 'lucide-react'
+import { SCHEMATIC_MM_TO_PX } from '@workspace/core'
 
 export function SheetSettings({ schematicId, currentPreset, currentWidth, currentHeight }: { 
   schematicId: Id<"schematics">,
@@ -93,7 +94,7 @@ export function SheetSettings({ schematicId, currentPreset, currentWidth, curren
               <div className="h-1.5 w-1.5 rounded-full bg-blue-400 mt-1" />
               <p className="text-[10px] text-slate-400 leading-tight">
                 Schematic units are now in mm.<br/> 
-                Scale: 10px per mm.
+                Scale: {SCHEMATIC_MM_TO_PX}px per mm.
               </p>
             </div>
           </div>

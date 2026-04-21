@@ -9,7 +9,13 @@ export const MM_TO_MIL = 39.3701;
 // 1mm = 10 units in our coordinate system (allowing 0.1mm precision as integer)
 // Or we can just use 1:1 mm if we use floats. 
 // Given tldraw uses floats, let's use 1 unit = 1mm for PCB layout.
-export const MM_TO_PX = 10; 
+// Schematic uses a larger relative scale for better visibility (fewer px per mm makes shapes look bigger)
+export const SCHEMATIC_MM_TO_PX = 6;
+// PCB uses a high density scale for precision (10px per mm = 0.1mm grid)
+export const PCB_MM_TO_PX = 10;
+
+/** @deprecated Use SCHEMATIC_MM_TO_PX or PCB_MM_TO_PX */
+export const MM_TO_PX = PCB_MM_TO_PX; 
 
 export interface GridConfig {
   unit: GridUnit;
@@ -23,12 +29,14 @@ export const DEFAULT_GRID: GridConfig = {
   snapEnabled: true,
 };
 
-export function mmToPx(mm: number): number {
-  return mm * MM_TO_PX;
+export function mmToPx(mm: number, mode: 'schematic' | 'pcb' = 'pcb'): number {
+  const scale = mode === 'schematic' ? SCHEMATIC_MM_TO_PX : PCB_MM_TO_PX;
+  return mm * scale;
 }
 
-export function pxToMm(px: number): number {
-  return px / MM_TO_PX;
+export function pxToMm(px: number, mode: 'schematic' | 'pcb' = 'pcb'): number {
+  const scale = mode === 'schematic' ? SCHEMATIC_MM_TO_PX : PCB_MM_TO_PX;
+  return px / scale;
 }
 
 export function milToMm(mil: number): number {
