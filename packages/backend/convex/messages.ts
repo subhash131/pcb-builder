@@ -1,5 +1,6 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.js";
 import { v } from "convex/values";
+import { Id } from "./_generated/dataModel.js";
 
 /**
  * Fetch messages for a given conversation.
@@ -9,10 +10,10 @@ export const list = query({
     conversationId: v.id("conversations"),
     limit: v.optional(v.number()),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: { conversationId: Id<"conversations">; limit?: number }) => {
     const q = ctx.db
       .query("messages")
-      .withIndex("by_conversationId", (q) => q.eq("conversationId", args.conversationId))
+      .withIndex("by_conversationId", (q: any) => q.eq("conversationId", args.conversationId))
       .order("desc"); // Get most recent first
       
     const messages = args.limit ? await q.take(args.limit) : await q.collect();
@@ -30,7 +31,7 @@ export const insert = mutation({
     role: v.union(v.literal("user"), v.literal("ai"), v.literal("system"), v.literal("tool")),
     content: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { conversationId: Id<"conversations">; role: "user" | "ai" | "system" | "tool"; content: string }) => {
     // Update the conversation's updatedAt timestamp
     await ctx.db.patch(args.conversationId, { updatedAt: Date.now() });
 
@@ -56,7 +57,7 @@ export const insertMany = mutation({
       })
     ),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { conversationId: Id<"conversations">; messages: Array<{ role: "user" | "ai" | "system" | "tool"; content: string }> }) => {
     // Update the conversation's updatedAt timestamp
     await ctx.db.patch(args.conversationId, { updatedAt: Date.now() });
 

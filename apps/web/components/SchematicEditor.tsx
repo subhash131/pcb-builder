@@ -1,4 +1,4 @@
-import { Tldraw, useEditor } from 'tldraw'
+import { Tldraw, useEditor, TLShape, TLShapeId, TLRecord, TLParentId } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { SymbolShapeUtil } from './editor/SymbolShape'
 import { WireShapeUtil } from './editor/WireShape'
@@ -14,9 +14,8 @@ import { useQuery, useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
 import { createContext, useContext, useEffect, useRef, useMemo } from 'react'
-import { TLRecord } from 'tldraw'
 
-function debounce<T extends (...args: any[]) => any>(fn: T, ms: number) {
+function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
   let timeoutId: ReturnType<typeof setTimeout>
   const debounced = (...args: Parameters<T>) => {
     clearTimeout(timeoutId)
@@ -51,7 +50,7 @@ export const PAGE_PRESETS = {
 
 const KiCadSheet = () => {
   const schematicId = useContext(SchematicContext)
-  const schematic = useQuery(api.schematics.getById, schematicId ? { id: schematicId } : "skip" as any)
+  const schematic = useQuery(api.schematics.getById, schematicId ? { id: schematicId } : "skip")
 
   if (!schematicId) return null
 
@@ -238,25 +237,24 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
     const cleanup = editor.store.listen(({ changes }) => {
       if (!isHydrated.current) return
 
-      const updates: any[] = []
-      const deletions: string[] = []
+      const updates: TLRecord[] = []
+      const deletions: TLShapeId[] = []
 
       Object.values(changes.added).forEach((record) => {
-        if (record.id.startsWith('shape') || record.id.startsWith('binding')) {
+        if (record.typeName === 'shape' || record.typeName === 'binding') {
           updates.push(record)
           localEdits.current[record.id] = Date.now()
         }
       })
       Object.values(changes.updated).forEach(([, next]) => {
-        const n = next as any
-        if (n.id.startsWith('shape') || n.id.startsWith('binding')) {
-          updates.push(n)
-          localEdits.current[n.id] = Date.now()
+        if (next.typeName === 'shape' || next.typeName === 'binding') {
+          updates.push(next)
+          localEdits.current[next.id] = Date.now()
         }
       })
       Object.values(changes.removed).forEach((record) => {
-        if (record.id.startsWith('shape') || record.id.startsWith('binding')) {
-          deletions.push(record.id)
+        if (record.typeName === 'shape' || record.typeName === 'binding') {
+          deletions.push(record.id as TLShapeId)
           localEdits.current[record.id] = Date.now()
         }
       })
@@ -316,17 +314,17 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   useEffect(() => {
     if (!records) return
 
-    const mapShape = (s: any) => {
+    const mapShape = (s: any): TLShape | null => {
       if (s.type === 'line') return null
       return {
-        id: s.tldrawId,
-        typeName: 'shape' as const,
+        id: s.tldrawId as TLShapeId,
+        typeName: 'shape',
         type: s.type,
         x: s.x,
         y: s.y,
         rotation: s.rotation,
-        index: s.index,
-        parentId: s.parentId,
+        index: s.index as any,
+        parentId: s.parentId as TLParentId,
         isLocked: s.isLocked,
         opacity: s.opacity,
         props: {
@@ -340,11 +338,11 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
           ...(s.props || {})
         },
         meta: s.meta,
-      }
+      } as TLShape
     }
 
     const mapBinding = (b: any) => ({
-      id: b.tldrawId,
+      id: b.tldrawId as any,
       typeName: 'binding' as const,
       type: b.type,
       fromId: b.fromId,
@@ -355,32 +353,30 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
 
     if (!isHydrated.current) {
       // ── Initial load: put everything from DB into the editor ──
-      const batch: any[] = []
+      const batch: TLRecord[] = []
       records.shapes.forEach(s => { const r = mapShape(s); if (r) batch.push(r) })
-      records.bindings.forEach(b => batch.push(mapBinding(b)))
+      records.bindings.forEach(b => batch.push(mapBinding(b) as any)) 
       if (batch.length > 0) editor.store.put(batch)
       isHydrated.current = true
       return
     }
 
-    // ── Live sync: ONLY inject shapes that are brand-new in the DB ──
-    // (i.e. the AI just added them). We NEVER overwrite shapes the local
-    // user already has on their canvas — that would cause rubber-banding.
+    // ── Live sync ──
     const now = Date.now()
-    const OWNERSHIP_TTL = 10_000 // 10s — user owns a shape for this long after last touch
-    const newRecords: any[] = []
+    const OWNERSHIP_TTL = 10_000 
+    const newRecords: TLRecord[] = []
     
     records.shapes.forEach(s => {
       const r = mapShape(s)
       if (!r) return
-      const isNew = !editor.store.has(r.id as any)
+      const isNew = !editor.store.has(r.id)
       const userOwns = (localEdits.current[s.tldrawId] ?? 0) > now - OWNERSHIP_TTL
       if (isNew && !userOwns) newRecords.push(r)
     })
 
     records.bindings.forEach(b => {
       const r = mapBinding(b)
-      if (!editor.store.has(r.id as any)) newRecords.push(r)
+      if (!editor.store.has(r.id)) newRecords.push(r)
     })
     
     if (newRecords.length > 0) {

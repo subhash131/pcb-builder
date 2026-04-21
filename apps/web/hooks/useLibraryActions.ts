@@ -25,7 +25,7 @@ export function useLibraryActions(editor: Editor) {
         id: `pin-${p.number}`, 
         name: p.name, 
         number: p.number, 
-        type: p.type as any // Simple mapping for now
+        type: p.type
       })
     )
     addComponentPCB(component)

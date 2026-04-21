@@ -8,14 +8,16 @@ export enum SyncActionType {
   OK = 'ok',       // no change needed
 }
 
+export type SyncActionPayload = 
+  | { footprintId: string } 
+  | { footprint: FootprintPlacement } 
+  | { old: string; new: string };
+
 export interface SyncAction {
   type: SyncActionType;
   componentRef: string;
-  detail: string;          // human readable — shown in diff UI
-  // for ADD: footprintId to place
-  // for REMOVE: will delete footprint + any connected traces
-  // for UPDATE: old vs new footprintId
-  payload?: any;
+  detail: string;          
+  payload: SyncActionPayload;
 }
 
 export interface SyncReport {

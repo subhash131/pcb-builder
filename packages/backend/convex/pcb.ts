@@ -1,10 +1,20 @@
-import { mutation, query } from "./_generated/server";
+import { mutation, query, MutationCtx, QueryCtx } from "./_generated/server.js";
 import { v } from "convex/values";
-import { Id } from "./_generated/dataModel";
+import { Id } from "./_generated/dataModel.js";
 
 // Note: In a real production app, we'd import { FootprintResolver } from "@workspace/core"
 // but to ensure zero-config reliability in the Convex sandbox, I'll implement the logic locally.
-function resolveFootprint(component: any): string {
+
+interface NetlistNode {
+  attributes: {
+    kind: string;
+    ref: string;
+    symbolId?: string;
+    footprintId?: string;
+  };
+}
+
+function resolveFootprint(component: NetlistNode['attributes']): string {
   if (component.footprintId && component.footprintId !== "unknown" && component.footprintId !== "") {
     return component.footprintId;
   }
@@ -26,10 +36,10 @@ function resolveFootprint(component: any): string {
  */
 export const getOrCreateBoard = mutation({
   args: { schematicId: v.id("schematics") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { schematicId: Id<"schematics"> }) => {
     const existing = await ctx.db
       .query("pcb_boards")
-      .withIndex("by_schematicId", (q) => q.eq("schematicId", args.schematicId))
+      .withIndex("by_schematicId", (q: any) => q.eq("schematicId", args.schematicId))
       .unique();
 
     if (existing) return existing._id;
@@ -54,10 +64,10 @@ export const getOrCreateBoard = mutation({
  */
 export const getBoardBySchematicId = query({
   args: { schematicId: v.id("schematics") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: { schematicId: Id<"schematics"> }) => {
     return await ctx.db
       .query("pcb_boards")
-      .withIndex("by_schematicId", (q) => q.eq("schematicId", args.schematicId))
+      .withIndex("by_schematicId", (q: any) => q.eq("schematicId", args.schematicId))
       .unique();
   },
 });
@@ -67,10 +77,10 @@ export const getBoardBySchematicId = query({
  */
 export const getFootprints = query({
   args: { boardId: v.id("pcb_boards") },
-  handler: async (ctx, args) => {
+  handler: async (ctx: QueryCtx, args: { boardId: Id<"pcb_boards"> }) => {
     return await ctx.db
       .query("pcb_footprints")
-      .withIndex("by_board", (q) => q.eq("boardId", args.boardId))
+      .withIndex("by_board", (q: any) => q.eq("boardId", args.boardId))
       .collect();
   },
 });
@@ -83,13 +93,13 @@ export const syncFromSchematic = mutation({
     schematicId: v.id("schematics"),
     netlist: v.any() // The graphology export
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { schematicId: Id<"schematics">; netlist: any }) => {
     const { schematicId, netlist } = args;
     
     // 1. Get or create board
     let board = await ctx.db
       .query("pcb_boards")
-      .withIndex("by_schematicId", (q) => q.eq("schematicId", schematicId))
+      .withIndex("by_schematicId", (q: any) => q.eq("schematicId", schematicId))
       .unique();
     
     if (!board) {
@@ -112,14 +122,13 @@ export const syncFromSchematic = mutation({
       .withIndex("by_board", q => q.eq("boardId", board._id))
       .collect();
 
-    const existingRefs = new Set(existingFootprints.map(f => f.componentRef));
+    const existingRefs = new Set(existingFootprints.map((f: any) => f.componentRef));
     
-    // Parse netlist (assuming graphology export format)
-    const incomingComponents = (netlist.nodes || [])
-      .filter((n: any) => n.attributes?.kind === 'component')
-      .map((n: any) => n.attributes);
+    const incomingComponents = ((netlist as any).nodes || [])
+      .filter((n: NetlistNode) => n.attributes?.kind === 'component')
+      .map((n: NetlistNode) => n.attributes);
     
-    const incomingRefs = new Set(incomingComponents.map((c: any) => c.ref));
+    const incomingRefs = new Set(incomingComponents.map((c: NetlistNode['attributes']) => c.ref));
 
     // ADD new components
     for (const component of incomingComponents) {
@@ -136,7 +145,7 @@ export const syncFromSchematic = mutation({
         });
       } else {
         // Update footprintId if it changed (e.g. user changed property in schematic)
-        const existing = existingFootprints.find(f => f.componentRef === component.ref);
+        const existing = existingFootprints.find((f: any) => f.componentRef === component.ref);
         const newFootprintId = resolveFootprint(component);
         if (existing && existing.footprintId !== newFootprintId) {
           await ctx.db.patch(existing._id, { footprintId: newFootprintId });
@@ -167,9 +176,9 @@ export const updateFootprint = mutation({
     x: v.number(),
     y: v.number(),
     rotation: v.optional(v.number()),
-    layer: v.optional(v.string()),
+    layer: v.optional(v.union(v.literal("F.Cu"), v.literal("B.Cu"))),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { id: Id<"pcb_footprints">; x: number; y: number; rotation?: number; layer?: "F.Cu" | "B.Cu" }) => {
     const { id, ...updates } = args;
     await ctx.db.patch(id, updates);
   },
@@ -185,10 +194,10 @@ export const updateFootprints = mutation({
       x: v.number(),
       y: v.number(),
       rotation: v.optional(v.number()),
-      layer: v.optional(v.string()),
+      layer: v.optional(v.union(v.literal("F.Cu"), v.literal("B.Cu"))),
     }))
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { updates: Array<{ id: Id<"pcb_footprints">; x: number; y: number; rotation?: number; layer?: "F.Cu" | "B.Cu" }> }) => {
     for (const update of args.updates) {
       const { id, ...fields } = update;
       await ctx.db.patch(id, fields);
@@ -206,7 +215,7 @@ export const updateBoard = mutation({
     height: v.number(),
     preset: v.string(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { id: Id<"pcb_boards">; width: number; height: number; preset: string }) => {
     await ctx.db.patch(args.id, {
       boardWidth: args.width,
       boardHeight: args.height,
@@ -225,7 +234,7 @@ export const updateCamera = mutation({
     y: v.number(),
     zoom: v.number(),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { id: Id<"pcb_boards">; x: number; y: number; zoom: number }) => {
     return await ctx.db.patch(args.id, {
       cameraX: args.x,
       cameraY: args.y,
@@ -248,13 +257,13 @@ export const applySyncActions = mutation({
       payload: v.any(),
     })),
   },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { boardId: Id<"pcb_boards">; actions: any[] }) => {
     const { boardId, actions } = args;
 
     for (const action of actions) {
       const existing = await ctx.db
         .query("pcb_footprints")
-        .withIndex("by_ref", (q) => q.eq("boardId", boardId).eq("componentRef", action.componentRef))
+        .withIndex("by_ref", (q: any) => q.eq("boardId", boardId).eq("componentRef", action.componentRef))
         .unique();
 
       switch (action.type) {
@@ -297,7 +306,7 @@ export const applySyncActions = mutation({
  */
 export const deleteFootprints = mutation({
   args: { ids: v.array(v.id("pcb_footprints")) },
-  handler: async (ctx, args) => {
+  handler: async (ctx: MutationCtx, args: { ids: Id<"pcb_footprints">[] }) => {
     for (const id of args.ids) {
       await ctx.db.delete(id);
     }

@@ -39,7 +39,14 @@ export class Netlist {
 
     if (!this.graph.hasNode(normalizedPinRef)) {
       console.warn(`Netlist: attempt to assign net to missing pin "${normalizedPinRef}". Adding dummy node.`)
-      this.graph.addNode(normalizedPinRef, { kind: 'pin', ref: normalizedPinRef } as any)
+      this.graph.addNode(normalizedPinRef, { 
+        kind: 'pin', 
+        ref: normalizedPinRef, 
+        componentRef: 'unknown', 
+        pinNumber: '?', 
+        pinName: '?', 
+        type: PinType.PASSIVE 
+      })
     }
 
     // remove from old net first
@@ -74,8 +81,8 @@ export class Netlist {
 
   getComponents(): ComponentNode[] {
     return this.graph.nodes()
-      .map(n => this.graph.getNodeAttributes(n) as any)
-      .filter(n => n.kind === 'component')
+      .map(n => this.graph.getNodeAttributes(n))
+      .filter((n: ComponentNode | PinNode | NetNode): n is ComponentNode => n.kind === 'component')
   }
 
   getPinsOnNet(netId: string): PinNode[] {

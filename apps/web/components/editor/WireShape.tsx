@@ -59,7 +59,7 @@ export class WireShapeUtil extends ShapeUtil<WireShape> {
     const { startBinding, endBinding } = shape.props
     
     // Check if either end of the wire is connected to a net with violations
-    const checkNet = (binding: any) => {
+    const checkNet = (binding: WireShape['props']['startBinding']) => {
       if (!binding) return false
       const pinRef = `${binding.shapeId}.pin-${binding.pinId.replace('pin-', '')}`
       const netId = netlist.getPinNet(pinRef)

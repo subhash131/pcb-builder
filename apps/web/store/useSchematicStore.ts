@@ -1,13 +1,13 @@
 import { create } from 'zustand'
 import { immer } from 'zustand/middleware/immer'
-import { Netlist, ErcReport } from '@workspace/core'
+import { Netlist, ErcReport, PinType } from '@workspace/core'
 
 interface SchematicState {
   netlist: Netlist
   netlistVersion: number
   ercReport: ErcReport | null
   setErcReport: (report: ErcReport) => void
-  addComponent: (ref: string, symbolId: string, footprintId: string, pins: { number: string; name: string; type: any }[]) => void
+  addComponent: (ref: string, symbolId: string, footprintId: string, pins: { number: string; name: string; type: PinType }[]) => void
   connectPins: (compA: string, pinA: string, compB: string, pinB: string, netId: string) => void
   triggerERC: () => void
   getNetlist: () => Netlist

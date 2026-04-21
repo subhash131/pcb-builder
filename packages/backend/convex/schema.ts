@@ -80,7 +80,7 @@ export default defineSchema({
     x: v.number(),                    // mm from board origin
     y: v.number(),
     rotation: v.number(),             // degrees
-    layer: v.string(),                // "F.Cu" | "B.Cu"
+    layer: v.union(v.literal("F.Cu"), v.literal("B.Cu")),                // "F.Cu" | "B.Cu"
     isLocked: v.boolean(),
   }).index("by_board", ["boardId"])
     .index("by_ref", ["boardId", "componentRef"]),

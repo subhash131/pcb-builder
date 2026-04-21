@@ -1,18 +1,18 @@
-import { Tldraw, useEditor, track, Editor, TLShapePartial, TLRecord } from 'tldraw'
+import { Tldraw, useEditor, track, Editor, TLShapePartial, TLRecord, TLShapeId, TLShape, TLParentId } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
 import { useEffect, useMemo, useRef, useCallback, createContext, useContext } from 'react'
 
-import { FootprintShapeUtil } from './editor/pcb/FootprintShapeUtil'
+import { FootprintShape, FootprintShapeUtil } from './editor/pcb/FootprintShapeUtil'
 import { RatsnestShapeUtil } from './editor/pcb/RatsnestShapeUtil'
 import { computeRatsnest } from '../lib/pcb-logic'
 import { useSchematicStore } from '../store/useSchematicStore'
 import { mmToPx, pxToMm } from '@workspace/core'
 import { PCBSheetSettings } from './editor/PCBSheetSettings'
 
-function debounce<T extends (...args: any[]) => any>(fn: T, ms: number) {
+function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
   let timeoutId: ReturnType<typeof setTimeout>
   const debounced = (...args: Parameters<T>) => {
     clearTimeout(timeoutId)
@@ -28,14 +28,18 @@ const PCBContext = createContext<Id<"schematics"> | null>(null)
 
 const KiCadPCBSheet = track(() => {
   const schematicId = useContext(PCBContext)
-  const board = useQuery(api.pcb.getBoardBySchematicId, schematicId ? { schematicId } : "skip" as any)
+  const board = useQuery(api.pcb.getBoardBySchematicId, schematicId ? { schematicId } : "skip")
   
   if (!board) return null
 
   const width = mmToPx(board.boardWidth)
   const height = mmToPx(board.boardHeight)
   
-  const FRAME_COLOR = '#ae40a5'
+  const FRAME_COLOR = '#444444' // Subtle dark frame
+  const BOARD_COLOR = '#0a2a1a' // Deep green solder mask
+  const COPPER_COLOR = '#c8a020'
+  const TEXT_COLOR = '#cccccc'
+  
   const MARGIN = mmToPx(10)
   const FRAME_W = mmToPx(4)
   
@@ -57,11 +61,22 @@ const KiCadPCBSheet = track(() => {
         top: 0,
         width,
         height,
-        border: `1px dashed ${FRAME_COLOR}88`,
+        backgroundColor: BOARD_COLOR,
+        border: `2px solid #111`,
+        boxShadow: '0 10px 30px rgba(0,0,0,0.5)',
         boxSizing: 'border-box'
       }}
     >
-      {/* Outer Frame */}
+      {/* Subtle Grid overlay for the whole board */}
+      <div style={{
+        position: 'absolute',
+        inset: 0,
+        backgroundImage: `radial-gradient(circle at 1px 1px, #1a2230 1px, transparent 0)`,
+        backgroundSize: `${mmToPx(2.54)}px ${mmToPx(2.54)}px`, // 100mil grid
+        opacity: 0.3
+      }} />
+
+      {/* Outer technical Frame */}
       <div style={{
         position: 'absolute',
         left: MARGIN,
@@ -79,7 +94,7 @@ const KiCadPCBSheet = track(() => {
         top: MARGIN + FRAME_W,
         width: usableW,
         height: usableH,
-        border: `1px solid ${FRAME_COLOR}`,
+        border: `1px solid ${FRAME_COLOR}44`,
         boxSizing: 'border-box'
       }} />
 
@@ -92,7 +107,7 @@ const KiCadPCBSheet = track(() => {
           transform: 'translateX(-50%) translateY(-50%)',
           color: FRAME_COLOR,
           fontFamily: 'monospace',
-          fontSize: 24,
+          fontSize: 18,
           fontWeight: 'bold'
         }
         return (
@@ -112,7 +127,7 @@ const KiCadPCBSheet = track(() => {
           transform: 'translateY(-50%) translateX(-50%)',
           color: FRAME_COLOR,
           fontFamily: 'monospace',
-          fontSize: 24,
+          fontSize: 18,
           fontWeight: 'bold'
         }
         return (
@@ -127,30 +142,30 @@ const KiCadPCBSheet = track(() => {
       <div 
         style={{
           position: 'absolute',
-          bottom: MARGIN + FRAME_W,
-          right: MARGIN + FRAME_W,
-          width: 450,
-          height: 200,
-          borderTop: `2px solid ${FRAME_COLOR}`,
-          borderLeft: `2px solid ${FRAME_COLOR}`,
-          padding: 16,
-          color: FRAME_COLOR,
+          bottom: MARGIN + FRAME_W + 10,
+          right: MARGIN + FRAME_W + 10,
+          width: 320,
+          height: 140,
+          border: `1px solid ${FRAME_COLOR}`,
+          padding: 12,
+          color: TEXT_COLOR,
           fontFamily: 'monospace',
-          fontSize: 16,
+          fontSize: 12,
           display: 'flex',
           flexDirection: 'column',
-          backgroundColor: '#00050b88',
-          backdropFilter: 'blur(2px)'
+          backgroundColor: '#000000cc',
+          borderLeft: `4px solid ${COPPER_COLOR}`,
+          backdropFilter: 'blur(4px)'
         }}
       >
-        <div style={{ borderBottom: `1px solid ${FRAME_COLOR}44`, paddingBottom: 8, marginBottom: 8, fontSize: 22, fontWeight: 'bold' }}>
-          PCB LAYOUT ASSISTANT
+        <div style={{ borderBottom: `1px solid #333`, paddingBottom: 4, marginBottom: 8, fontSize: 16, fontWeight: 'bold', color: COPPER_COLOR }}>
+          P. PROTOTYPE v1.0
         </div>
-        <div>Sheet: 1/1</div>
-        <div style={{ wordBreak: 'break-all' }}>Preset: {board.boardPreset || 'A4'}</div>
-        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', fontSize: 18 }}>
-          <span>Size: {Math.round(board.boardWidth)}x{Math.round(board.boardHeight)}mm</span>
-          <span>Rev: v1.0</span>
+        <div>Layer Count: {board.layers}</div>
+        <div>Board ID: {board._id.substring(0, 8)}...</div>
+        <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', opacity: 0.7 }}>
+          <span>{Math.round(board.boardWidth)} x {Math.round(board.boardHeight)} mm</span>
+          <span>{new Date(board.updatedAt || 0).toLocaleDateString()}</span>
         </div>
       </div>
     </div>
@@ -162,41 +177,53 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   const netlist = useSchematicStore(s => s.netlist)
   
   const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
-  const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip" as any)
+  const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip")
   const updateFootprints = useMutation(api.pcb.updateFootprints)
   const deleteFootprints = useMutation(api.pcb.deleteFootprints)
 
   // Track pending updates to avoid cursor fighting
-  const pendingUpdates = useRef<Map<string, { x: number, y: number, rotation: number }>>(new Map())
+  const pendingUpdates = useRef<Map<TLShapeId, { x: number, y: number, rotation: number }>>(new Map())
 
   // 1. Sync Footprints from Convex to tldraw (Smart Sync)
   useEffect(() => {
     if (!footprints) return
     
     editor.run(() => {
-      const shapesToCreate: any[] = []
-      const shapesToUpdate: any[] = []
+      const shapesToCreate: TLShapePartial<FootprintShape>[] = []
+      const shapesToUpdate: TLShapePartial<FootprintShape>[] = []
       
       footprints.forEach(f => {
-        const id = `shape:footprint-${f._id}` as any
+        const id = `shape:footprint-${f._id}` as TLShapeId
         
         // Skip if user is currently interacting with this shape or we have pending local changes
         if (pendingUpdates.current.has(id)) return
         if (editor.getSelectedShapeIds().includes(id)) return // Basic heuristic: don't overwrite selected shapes
 
+        // Resolve footprintId to match our registry
+        let defKey = f.footprintId;
+        if (defKey.includes('0603')) defKey = 'R0603';
+        else if (defKey.includes('0805')) defKey = 'R0805';
+        else if (defKey.includes('DIP')) defKey = 'DIP8';
+
+        // Resolve nets for each pad
+        const netIds: Record<string, string | null> = {}
+        const pins = netlist.getComponentPins(f.componentRef)
+        pins.forEach(p => {
+          const net = netlist.getPinNet(`${f.componentRef}.pin-${p.pinNumber}`)
+          netIds[p.pinNumber] = net
+        })
+
         const shapeData = {
           id,
-          type: 'footprint',
+          type: 'footprint' as const,
           x: mmToPx(f.x),
           y: mmToPx(f.y),
           rotation: (f.rotation * Math.PI) / 180,
           props: {
             componentRef: f.componentRef,
-            footprintId: f.footprintId,
+            footprintId: defKey,
             layer: f.layer,
-            w: 10,
-            h: 10,
-            pads: [],
+            netIds,
           }
         }
 
@@ -230,28 +257,37 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   // 2. Real-time Ratsnest (Computed from store)
   useEffect(() => {
     const updateRatsnest = () => {
-      const allShapes = editor.getCurrentPageShapes()
-      const fpShapes = allShapes.filter(s => s.type === 'footprint')
+      if (!footprints) return
       
       // Convert current store shapes back to the format computeRatsnest expects
-      const currentFootprints = fpShapes.map(s => ({
-        componentRef: (s.props as any).componentRef,
-        x: pxToMm(s.x),
-        y: pxToMm(s.y),
-        rotation: (s.rotation * 180) / Math.PI
-      }))
+      const currentFootprints = footprints.map((f, i) => {
+        const shapeId = `shape:footprint-${f._id}` as TLShapeId
+        const s = editor.getShape(shapeId) as FootprintShape | undefined
+        return {
+          ...f,
+          index: `a${i}` as any,
+          x: s ? pxToMm(s.x) : f.x,
+          y: s ? pxToMm(s.y) : f.y,
+          rotation: s ? (s.rotation * 180) / Math.PI : f.rotation,
+          componentRef: s ? s.props.componentRef : f.componentRef,
+        }
+      })
 
       const ratsnestLines = computeRatsnest(netlist, currentFootprints)
       
-      const ratsnestId = 'shape:ratsnest' as any
+      const ratsnestId = 'shape:ratsnest' as TLShapeId
+      const s = editor.getShape(ratsnestId)
       const data = {
         id: ratsnestId,
+        index: (s?.index ?? 'a1') as any,
         type: 'ratsnest',
         x: 0,
         y: 0,
-        props: { lines: ratsnestLines },
+        props: {
+          lines: ratsnestLines
+        },
         isLocked: true,
-      }
+      } satisfies TLShapePartial
 
       if (editor.store.has(ratsnestId)) {
         editor.updateShape(data)
@@ -263,8 +299,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
     // Update initially and listen for store changes
     updateRatsnest()
     const cleanup = editor.store.listen(({ changes }) => {
-      // Only recompute if footprints moved or were added/removed
-      const isFp = (s: TLRecord) => s.typeName === 'shape' && (s as any).type === 'footprint'
+      const isFp = (s: TLRecord): s is FootprintShape => s.typeName === 'shape' && (s as any).type === 'footprint'
       
       const hasFpChanges = 
         Object.values(changes.added).some(isFp) ||
@@ -277,16 +312,16 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
     }, { source: 'user', scope: 'document' })
 
     return () => cleanup()
-  }, [editor, netlist])
+  }, [editor, netlist, footprints])
 
   // 3. Persistence: Debounced Batch Push
-  const pushUpdates = useMemo(() => debounce(async (updates: any[]) => {
+  const pushUpdates = useMemo(() => debounce(async (updates: Array<{ id: Id<"pcb_footprints">, x: number, y: number, rotation: number }>) => {
     if (updates.length === 0) return
     console.log(`[PCB] Pushing ${updates.length} footprint updates to DB`)
     try {
       await updateFootprints({ updates })
       // Clear pending updates for these IDs
-      updates.forEach(u => pendingUpdates.current.delete(`shape:footprint-${u.id}`))
+      updates.forEach(u => pendingUpdates.current.delete(`shape:footprint-${u.id}` as TLShapeId))
     } catch (err) {
       console.error("Failed to update footprints", err)
     }
@@ -304,30 +339,29 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
   useEffect(() => {
     const cleanup = editor.store.listen(({ changes }) => {
-      const updates: any[] = []
+      const updates: Array<{ id: Id<"pcb_footprints">, x: number, y: number, rotation: number }> = []
       const deletions: Id<"pcb_footprints">[] = []
 
       // Handle updates
-      Object.keys(changes.updated).forEach((id) => {
-        const next = editor.getShape(id as any)
-        if (next?.type === 'footprint') {
-          const dbId = next.id.replace('shape:footprint-', '')
+      Object.entries(changes.updated).forEach(([id, [, next]]) => {
+        if (next.typeName === 'shape' && (next as any).type === 'footprint') {
+          const shape = next as FootprintShape
+          const dbId = shape.id.replace('shape:footprint-', '') as Id<"pcb_footprints">
           updates.push({
-            id: dbId as Id<"pcb_footprints">,
-            x: pxToMm(next.x),
-            y: pxToMm(next.y),
-            rotation: (next.rotation * 180) / Math.PI
+            id: dbId,
+            x: pxToMm(shape.x),
+            y: pxToMm(shape.y),
+            rotation: (shape.rotation * 180) / Math.PI
           })
-          pendingUpdates.current.set(id, { x: next.x, y: next.y, rotation: next.rotation })
+          pendingUpdates.current.set(shape.id, { x: shape.x, y: shape.y, rotation: shape.rotation })
         }
       })
 
       // Handle deletions
-      Object.keys(changes.removed).forEach((id) => {
-        const shape = changes.removed[id] as any
-        if (shape?.type === 'footprint') {
-          const dbId = shape.id.replace('shape:footprint-', '')
-          deletions.push(dbId as Id<"pcb_footprints">)
+      Object.values(changes.removed).forEach((shape) => {
+        if (shape.typeName === 'shape' && (shape as any).type === 'footprint') {
+          const dbId = shape.id.replace('shape:footprint-', '') as Id<"pcb_footprints">
+          deletions.push(dbId)
         }
       })
 
@@ -401,7 +435,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
 export default function PCBEditor({ schematicId }: { schematicId: Id<"schematics"> }) {
   return (
-    <div className="fixed inset-0 bg-[#00050b]" style={{ '--color-grid': '#1a2230' } as any}>
+    <div className="fixed inset-0 bg-[#00050b]" style={{ '--color-grid': '#1a2230' } as React.CSSProperties}>
       <PCBContext.Provider value={schematicId}>
         <Tldraw 
           shapeUtils={shapeUtils} 
