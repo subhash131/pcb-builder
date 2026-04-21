@@ -3,9 +3,12 @@ import 'tldraw/tldraw.css'
 import { SymbolShapeUtil } from './editor/SymbolShape'
 import { WireShapeUtil } from './editor/WireShape'
 import { useBoardStore } from '../store/useBoardStore'
+import { useSchematicStore } from '../store/useSchematicStore'
 import { useNetlistSync } from '../hooks/useNetlistSync'
 import { useLibraryActions } from '../hooks/useLibraryActions'
 import { useSchematicInteraction } from '../hooks/useSchematicInteraction'
+import { useERC } from '../hooks/useERC'
+import { useSymbolSync } from '../hooks/useSymbolSync'
 import { LibrarySidebar } from './editor/LibrarySidebar'
 import { ProximityHotspot } from './editor/ProximityHotspot'
 import { useQuery, useMutation } from "convex/react"
@@ -172,7 +175,7 @@ const KiCadSheet = () => {
 function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const editor = useEditor()
 
-  const connectPins = useBoardStore((s) => s.connectPins)
+  const connectPins = useSchematicStore((s) => s.connectPins)
   const syncRecords = useMutation(api.schematics.sync)
   
   const schematic = useQuery(api.schematics.getById, { id: schematicId })
@@ -191,6 +194,9 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
     setPendingStartPin, 
     pendingRef 
   } = useSchematicInteraction(editor)
+
+  useERC()
+  useSymbolSync(editor)
 
   // ── ENABLE GRID ──
   useEffect(() => {

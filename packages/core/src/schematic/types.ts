@@ -1,14 +1,7 @@
 // Domain types — no KiCad knowledge here
 
-export enum PinType {
-  INPUT     = 'input',
-  OUTPUT    = 'output',
-  PASSIVE   = 'passive',
-  POWER_IN  = 'power_in',
-  POWER_OUT = 'power_out',
-  OC        = 'open_collector',
-  NC        = 'no_connect',
-}
+import { PinType } from '../types/pin'
+export { PinType }
 
 export interface Position {
   x: number   // always in px, never mm

@@ -1,8 +1,10 @@
+import { PinType } from './types';
+
 export interface Pin {
   id: string;
   name: string;
   number: string;
-  type: 'input' | 'output' | 'passive' | 'power_in' | 'power_out';
+  type: PinType;
 }
 
 export class Component {

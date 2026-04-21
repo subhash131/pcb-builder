@@ -1,9 +1,11 @@
 import { Editor, createShapeId } from 'tldraw'
 import { Component, SYMBOL_DEFS, SymbolType } from '@workspace/core'
 import { useBoardStore } from '../store/useBoardStore'
+import { useSchematicStore } from '../store/useSchematicStore'
 
 export function useLibraryActions(editor: Editor) {
-  const addComponent = useBoardStore((s) => s.addComponent)
+  const addComponentPCB = useBoardStore((s) => s.addComponent)
+  const addComponentSchematic = useSchematicStore((s) => s.addComponent)
 
   const handleAddComponent = (type: SymbolType) => {
     const def = SYMBOL_DEFS[type]
@@ -26,7 +28,13 @@ export function useLibraryActions(editor: Editor) {
         type: p.type as any // Simple mapping for now
       })
     )
-    addComponent(component)
+    addComponentPCB(component)
+    addComponentSchematic(
+      component.id,
+      type, // symbolId
+      component.footprint,
+      component.pins.map(p => ({ number: p.number, name: p.name, type: p.type }))
+    )
 
     editor.createShape({
       id: componentId,

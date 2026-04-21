@@ -16,7 +16,7 @@ const llm = new ChatGroq({
 const dimensionsTable = (Object.entries(SYMBOL_DEFS) as [string, typeof SYMBOL_DEFS[keyof typeof SYMBOL_DEFS]][])
   .map(([type, def]) => {
     const pinsJson = JSON.stringify(def.pins);
-    return `  ${type.padEnd(10)}: w: ${def.w}, h: ${def.h}, pins: ${pinsJson}`;
+    return `  ${type.padEnd(10)}: w: ${def.boundingBox.width}, h: ${def.boundingBox.height}, pins: ${pinsJson}`;
   })
   .join('\n');
 
@@ -30,11 +30,9 @@ You have tools to list schematics, get shapes and bindings within a schematic, a
 IMPORTANT SHAPE INFORMATION:
 When creating schematic components, you MUST use \`type: "symbol"\`. DO NOT USE standard line, rect, or component types.
 A "symbol" shape requires these properties in its \`props\` object:
-- \`w\`: width
-- \`h\`: height
-- \`label\`: e.g. "RED" or "10k"
+- \`symbolId\`: MUST be one of "resistor", "capacitor", "ic", or "led"
 - \`designator\`: e.g. "D1" or "R1"
-- \`symbolType\`: MUST be one of "resistor", "capacitor", "ic", or "led"
+- \`value\`: e.g. "RED" or "10k"
 - \`pins\`: Array of pin objects. Pin x/y are fractional multipliers (0 to 1), where (0, 0.5) is left-center and (1, 0.5) is right-center.
 
 MANDATORY DIMENSIONS — use EXACTLY these values for each component type:

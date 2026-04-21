@@ -1,8 +1,8 @@
 import { SchematicSymbolDef, PinType } from './schematic/types'
 
-export type SymbolType = string
+export type SymbolType = "resistor" | "capacitor" | "led" | "ic"
 
-export const SYMBOL_DEFS: Record<string, SchematicSymbolDef> = {
+export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
   resistor: {
     id: 'resistor',
     pins: [
