@@ -48,11 +48,15 @@ const KiCadSheet = () => {
   const MARGIN = 100
   const FRAME_W = 40 // Space between the two red lines for labels
   
-  const hParts = width > 5000 ? 20 : 10
-  const vParts = height > 4000 ? 14 : 7
-
+  // Fixed physical scale: 1 division = 50 mm = 500 canvas units (1 unit = 0.1 mm)
+  // This keeps the tick spacing constant regardless of sheet size.
+  const DIVISION_SIZE = 500 // canvas units per division (50 mm)
   const innerW = PAGE_W - (MARGIN * 2)
   const innerH = PAGE_H - (MARGIN * 2)
+  const usableW = innerW - FRAME_W * 2
+  const usableH = innerH - FRAME_W * 2
+  const hParts = Math.round(usableW / DIVISION_SIZE)
+  const vParts = Math.round(usableH / DIVISION_SIZE)
 
   return (
     <div
