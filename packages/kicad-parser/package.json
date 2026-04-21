@@ -5,11 +5,11 @@
   "types": "./src/index.ts",
   "private": true,
   "dependencies": {
-    "nearley": "^2.20.1"
+    "@workspace/core": "workspace:*",
+    "kicadts": "^0.0.28"
   },
   "devDependencies": {
     "@workspace/typescript-config": "workspace:*",
-    "@types/nearley": "^2.11.5",
     "typescript": "5.7.3"
   }
 }
