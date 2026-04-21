@@ -11,6 +11,7 @@ interface SchematicState {
   connectPins: (compA: string, pinA: string, compB: string, pinB: string, netId: string) => void
   triggerERC: () => void
   getNetlist: () => Netlist
+  setNetlist: (netlist: Netlist) => void
 }
 
 export const useSchematicStore = create<SchematicState>()(
@@ -21,6 +22,11 @@ export const useSchematicStore = create<SchematicState>()(
     setErcReport: (report) =>
       set((state) => {
         state.ercReport = report
+      }),
+    setNetlist: (netlist) =>
+      set((state) => {
+        state.netlist = netlist
+        state.netlistVersion += 1
       }),
     addComponent: (ref, symbolId, footprintId, pins) =>
       set((state) => {

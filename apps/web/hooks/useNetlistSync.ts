@@ -1,35 +1,48 @@
 import { useEffect } from 'react'
-import { Editor, TLShape, TLShapeId } from 'tldraw'
-import { WireShape } from '../components/editor/WireShape'
-import { SymbolShape } from '../components/editor/SymbolShape'
+import { Editor, TLRecord } from 'tldraw'
+import { useSchematicStore } from '../store/useSchematicStore'
+import { NetlistReconstructor } from '@workspace/core'
 
-export function useNetlistSync(
-  editor: Editor,
-  connectPins: (compA: string, pinA: string, compB: string, pinB: string, netId: string) => void
-) {
+/**
+ * useNetlistSync
+ * 
+ * Holistic sync: Rebuilds the entire logical netlist from the current
+ * tldraw canvas state whenever a relevant change (add/update/remove/move) occurs.
+ * This fixes bugs where disconnections or deletions didn't trigger ERC updates.
+ */
+export function useNetlistSync(editor: Editor) {
+  const setNetlist = useSchematicStore((s) => s.setNetlist)
+
   useEffect(() => {
-    // @ts-ignore
-    const cleanup = editor.sideEffects?.registerAfterChangeHandler?.('shape', (prev: TLShape, next: TLShape, _source: string) => {
-      // Allow syncing from AI API drops as well by relaxing source constraints
-      if (!next || next.type !== 'wire') return
+    const syncNetlist = () => {
+      // 1. Get raw shape data from tldraw store
+      const shapes = editor.getCurrentPageShapes()
       
-      const wire = next as WireShape
-      const props = wire.props
-      if (!props.startBinding || !props.endBinding) return
+      // 2. Rebuild the netlist from scratch (Self-Healing)
+      const newNetlist = NetlistReconstructor.reconstruct(shapes)
+      
+      // 3. Update the global store (which triggers ERC via useERC)
+      setNetlist(newNetlist)
+    }
 
-      const compA = editor.getShape(props.startBinding.shapeId as TLShapeId) as SymbolShape | undefined
-      const compB = editor.getShape(props.endBinding.shapeId as TLShapeId) as SymbolShape | undefined
-      
-      if (compA?.type === 'symbol' && compB?.type === 'symbol') {
-        const pinA = props.startBinding.pinId
-        const pinB = props.endBinding.pinId
-        
-        // Ensure netlist is triggered safely
-        if (pinA && pinB) {
-          connectPins(compA.props.designator, pinA, compB.props.designator, pinB, `NET_${Date.now()}`)
-        }
+    // Initial sync
+    syncNetlist()
+
+    // Listen for any shape changes (added, removed, or props updated)
+    const cleanup = editor.store.listen(({ changes }) => {
+      const isRelevant = (record: TLRecord) => 
+        record.typeName === 'shape' && (record.type === 'symbol' || record.type === 'wire')
+
+      const hasChanges = 
+        Object.values(changes.added).some(isRelevant) ||
+        Object.values(changes.removed).some(isRelevant) ||
+        Object.values(changes.updated).some(([, next]) => isRelevant(next))
+
+      if (hasChanges) {
+        syncNetlist()
       }
-    })
-    return () => cleanup?.()
-  }, [editor, connectPins])
+    }, { scope: 'document' })
+
+    return () => cleanup()
+  }, [editor, setNetlist])
 }

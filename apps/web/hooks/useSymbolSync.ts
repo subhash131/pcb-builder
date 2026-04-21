@@ -22,15 +22,21 @@ export function useSymbolSync(editor: Editor) {
 
   useEffect(() => {
     const registry = SymbolRegistry.getInstance()
+    // Map of shapeId -> last synced designator to detect changes
+    const syncedState = new Map<string, { designator: string, symbolId: string }>()
 
     const syncSymbols = () => {
       const symbols = editor.getCurrentPageShapes().filter(s => s.type === 'symbol')
       
       symbols.forEach((shape: TLShape) => {
-        if (registeredIds.current.has(shape.id)) return
-
         const symbol = shape as SymbolShape
         const { symbolId, designator, value } = symbol.props
+        
+        const lastSynced = syncedState.get(shape.id)
+        if (lastSynced && lastSynced.designator === designator && lastSynced.symbolId === symbolId) {
+          return
+        }
+
         const def = registry.get(symbolId)
         if (!def) return
 
@@ -59,29 +65,24 @@ export function useSymbolSync(editor: Editor) {
         )
         addComponentPCB(component)
 
-        registeredIds.current.add(shape.id)
+        syncedState.set(shape.id, { designator, symbolId })
       })
     }
 
     // Initial sync
     syncSymbols()
 
-    // Listen for future additions
+    // Listen for additions and updates (e.g. designator changes)
     const cleanup = editor.store.listen(({ changes }) => {
-      if (Object.keys(changes.added).some(id => id.startsWith('shape'))) {
+      const hasShapeChanges = 
+        Object.keys(changes.added).some(id => id.startsWith('shape')) ||
+        Object.values(changes.updated).some(([, next]) => next.typeName === 'shape' && (next as any).type === 'symbol')
+
+      if (hasShapeChanges) {
         syncSymbols()
       }
-    }, { source: 'user', scope: 'document' })
+    }, { scope: 'document' })
 
-    const cleanupRemote = editor.store.listen(({ changes }) => {
-       if (Object.keys(changes.added).some(id => id.startsWith('shape'))) {
-        syncSymbols()
-      }
-    }, { source: 'remote', scope: 'document' })
-
-    return () => {
-      cleanup()
-      cleanupRemote()
-    }
+    return () => cleanup()
   }, [editor, addComponentSchematic, addComponentPCB])
 }
