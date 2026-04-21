@@ -196,6 +196,11 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
     )
   }
 
+  override canResize() {
+    return false
+  }
+
+
   override indicator(shape: SymbolShape) {
     const def = this.getSymbolDef(shape)
     return <rect width={def.boundingBox.width} height={def.boundingBox.height} />

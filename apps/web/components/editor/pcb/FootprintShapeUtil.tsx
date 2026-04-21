@@ -135,6 +135,10 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
     )
   }
 
+  override canResize() {
+    return false
+  }
+
   override indicator(shape: FootprintShape) {
     const def = FOOTPRINT_DEFS[shape.props.footprintId] || FOOTPRINT_DEFS['R0603']!
     return <rect width={mmToPx(def.w)} height={mmToPx(def.h)} />
