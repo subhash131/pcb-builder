@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useMemo } from 'react'
 import { Id } from '@workspace/backend/_generated/dataModel'
 import { useQuery, useMutation } from 'convex/react'
 import { api } from '@workspace/backend/_generated/api'
@@ -8,10 +8,9 @@ import dynamic from 'next/dynamic'
 import { Layout, Cpu, Box, Share2, Settings } from 'lucide-react'
 
 import { useEditorStore } from '../../store/useEditorStore'
-import { useSchematicStore } from '../../store/useSchematicStore'
 import { ChatPanel } from './ChatPanel'
 import { SyncDialog } from './SyncDialog'
-import { SchematicPCBSync } from '@workspace/core'
+import { SchematicPCBSync, NetlistReconstructor } from '@workspace/core'
 import { Badge } from '@workspace/ui/components/badge'
 import { Button } from '@workspace/ui/components/button'
 import { RefreshCw } from 'lucide-react'
@@ -32,12 +31,17 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
     setMounted(true)
   }, [])
 
-  const netlist = useSchematicStore(s => s.netlist)
-
   // Fetch PCB board and footprints
   const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
   const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip")
   const applySyncActions = useMutation(api.pcb.applySyncActions)
+
+  // Reconstruct netlist from source-of-truth records
+  const schematicRecords = useQuery(api.schematics.getRecords, { schematicId })
+  const netlist = useMemo(() => {
+    if (!schematicRecords) return null
+    return NetlistReconstructor.reconstruct(schematicRecords.shapes)
+  }, [schematicRecords])
 
   // Compute sync report
   const syncReport = netlist && footprints 

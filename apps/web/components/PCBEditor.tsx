@@ -205,9 +205,19 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
         // Resolve footprintId to match our registry
         let defKey = f.footprintId;
-        if (defKey.includes('0603')) defKey = 'R0603';
-        else if (defKey.includes('0805')) defKey = 'R0805';
-        else if (defKey.includes('DIP')) defKey = 'DIP8';
+        if (defKey.startsWith('C')) {
+          if (defKey.includes('0603')) defKey = 'C0603';
+          else if (defKey.includes('0805')) defKey = 'C0805';
+        } else if (defKey.startsWith('LED')) {
+          if (defKey.includes('0603')) defKey = 'LED0603';
+          else if (defKey.includes('0805')) defKey = 'LED0805';
+        } else if (defKey.includes('0603')) {
+          defKey = 'R0603';
+        } else if (defKey.includes('0805')) {
+          defKey = 'R0805';
+        } else if (defKey.includes('DIP')) {
+          defKey = 'DIP8';
+        }
 
         // Resolve nets for each pad
         const netIds: Record<string, string | null> = {}
