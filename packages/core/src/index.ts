@@ -6,3 +6,7 @@ export * from './schematic/types';
 export * from './schematic/SymbolRegistry';
 export * from './schematic/erc';
 export * from './types';
+export * from './pcb/FootprintResolver';
+export * from './pcb/ForwardAnnotator';
+export * from './pcb/Ratsnest';
+export * from './types/units';

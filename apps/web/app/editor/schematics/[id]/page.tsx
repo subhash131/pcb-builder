@@ -11,14 +11,11 @@ const SchematicEditor = dynamic(
   { ssr: false }
 )
 
+import { EditorShell } from '../../../../components/editor/EditorShell'
+
 export default function SchematicPage() {
   const params = useParams()
   const id = params.id as string
 
-  return (
-    <main className="h-screen w-screen overflow-hidden relative">
-      <SchematicEditor schematicId={id as Id<"schematics">} />
-      <ChatPanel schematicId={id as Id<"schematics">} />
-    </main>
-  )
+  return <EditorShell schematicId={id as Id<"schematics">} />
 }

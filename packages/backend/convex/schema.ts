@@ -52,5 +52,30 @@ export default defineSchema({
     content: v.string(),
     createdAt: v.number(),
   }).index("by_conversationId", ["conversationId"]),
+
+  pcb_boards: defineTable({
+    schematicId: v.id("schematics"),
+    boardWidth: v.number(),           // mm
+    boardHeight: v.number(),
+    layers: v.number(),               // 2, 4, 6...
+    gridConfig: v.object({
+      unit: v.string(),
+      size: v.number(),
+    }),
+    createdAt: v.number(),
+    updatedAt: v.number(),
+  }).index("by_schematicId", ["schematicId"]),
+
+  pcb_footprints: defineTable({
+    boardId: v.id("pcb_boards"),
+    componentRef: v.string(),         // "R1" — foreign key to schematic component
+    footprintId: v.string(),          // "R_0805"
+    x: v.number(),                    // mm from board origin
+    y: v.number(),
+    rotation: v.number(),             // degrees
+    layer: v.string(),                // "F.Cu" | "B.Cu"
+    isLocked: v.boolean(),
+  }).index("by_board", ["boardId"])
+    .index("by_ref", ["boardId", "componentRef"]),
 });
 

@@ -12,6 +12,7 @@ import type * as auth from "../auth.js";
 import type * as conversations from "../conversations.js";
 import type * as http from "../http.js";
 import type * as messages from "../messages.js";
+import type * as pcb from "../pcb.js";
 import type * as schematics from "../schematics.js";
 
 import type {
@@ -25,6 +26,7 @@ declare const fullApi: ApiFromModules<{
   conversations: typeof conversations;
   http: typeof http;
   messages: typeof messages;
+  pcb: typeof pcb;
   schematics: typeof schematics;
 }>;
 

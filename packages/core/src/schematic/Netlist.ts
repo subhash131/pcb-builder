@@ -65,6 +65,19 @@ export class Netlist {
       .filter(n => this.graph.getNodeAttribute(n, 'kind') === 'net')
   }
 
+  getNets(): Array<{ netId: string; pins: PinNode[] }> {
+    return this.getNetIds().map(netId => ({
+      netId,
+      pins: this.getPinsOnNet(netId),
+    }))
+  }
+
+  getComponents(): ComponentNode[] {
+    return this.graph.nodes()
+      .map(n => this.graph.getNodeAttributes(n) as any)
+      .filter(n => n.kind === 'component')
+  }
+
   getPinsOnNet(netId: string): PinNode[] {
     return this.graph.neighbors(netId)
       .map(n => this.graph.getNodeAttributes(n) as PinNode)
