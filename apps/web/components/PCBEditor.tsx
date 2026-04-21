@@ -107,7 +107,7 @@ const KiCadPCBSheet = track(() => {
           transform: 'translateX(-50%) translateY(-50%)',
           color: FRAME_COLOR,
           fontFamily: 'monospace',
-          fontSize: 18,
+          fontSize: 22,
           fontWeight: 'bold'
         }
         return (
@@ -127,7 +127,7 @@ const KiCadPCBSheet = track(() => {
           transform: 'translateY(-50%) translateX(-50%)',
           color: FRAME_COLOR,
           fontFamily: 'monospace',
-          fontSize: 18,
+          fontSize: 22,
           fontWeight: 'bold'
         }
         return (

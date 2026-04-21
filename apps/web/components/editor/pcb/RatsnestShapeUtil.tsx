@@ -1,6 +1,5 @@
 import { 
   ShapeUtil, 
-  HTMLContainer, 
   TLBaseShape,
   Rectangle2d,
   SVGContainer
@@ -51,9 +50,9 @@ export class RatsnestShapeUtil extends ShapeUtil<RatsnestShape> {
             x2={mmToPx(line.x2)}
             y2={mmToPx(line.y2)}
             stroke="white"
-            strokeWidth="1"
-            strokeDasharray="4 2"
-            opacity="0.6"
+            strokeWidth="2"
+            strokeDasharray="6 3"
+            opacity="0.7"
             pointerEvents="none"
           />
         ))}

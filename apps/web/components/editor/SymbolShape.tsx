@@ -85,8 +85,8 @@ export class SymbolShapeUtil extends ShapeUtil<SymbolShape> {
     const { width: w, height: h } = def.boundingBox
 
     // Label positions driven from bounding box
-    const labelY_above = -12
-    const labelY_below = h + 16
+    const labelY_above = -16
+    const labelY_below = h
 
     return (
       <HTMLContainer className="select-none">
