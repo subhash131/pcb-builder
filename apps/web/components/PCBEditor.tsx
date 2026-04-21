@@ -8,8 +8,7 @@ import { useEffect, useMemo, useRef, useCallback, createContext, useContext } fr
 import { FootprintShape, FootprintShapeUtil } from './editor/pcb/FootprintShapeUtil'
 import { RatsnestShapeUtil } from './editor/pcb/RatsnestShapeUtil'
 import { computeRatsnest } from '../lib/pcb-logic'
-import { useSchematicStore } from '../store/useSchematicStore'
-import { mmToPx, pxToMm } from '@workspace/core'
+import { NetlistReconstructor, mmToPx, pxToMm } from '@workspace/core'
 import { PCBSheetSettings } from './editor/PCBSheetSettings'
 
 function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
@@ -174,7 +173,12 @@ const KiCadPCBSheet = track(() => {
 
 const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) => {
   const editor = useEditor()
-  const netlist = useSchematicStore(s => s.netlist)
+  
+  const schematicRecords = useQuery(api.schematics.getRecords, { schematicId })
+  const netlist = useMemo(() => {
+    if (!schematicRecords) return null
+    return NetlistReconstructor.reconstruct(schematicRecords.shapes)
+  }, [schematicRecords])
   
   const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
   const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip")
@@ -207,11 +211,20 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
         // Resolve nets for each pad
         const netIds: Record<string, string | null> = {}
-        const pins = netlist.getComponentPins(f.componentRef)
-        pins.forEach(p => {
-          const net = netlist.getPinNet(`${f.componentRef}.pin-${p.pinNumber}`)
-          netIds[p.pinNumber] = net
-        })
+        if (netlist) {
+          // Legacy: Handle footprints saved with shape IDs instead of designators
+          let ref = f.componentRef
+          if (ref.startsWith('shape:') && schematicRecords) {
+            const sym = schematicRecords.shapes.find(s => s.tldrawId === ref)
+            if (sym?.props?.designator) ref = sym.props.designator
+          }
+
+          const pins = netlist.getComponentPins(ref)
+          pins.forEach(p => {
+            const net = netlist.getPinNet(`${ref}.pin-${p.pinNumber}`)
+            netIds[p.pinNumber] = net
+          })
+        }
 
         const shapeData = {
           id,
@@ -263,17 +276,25 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
       const currentFootprints = footprints.map((f, i) => {
         const shapeId = `shape:footprint-${f._id}` as TLShapeId
         const s = editor.getShape(shapeId) as FootprintShape | undefined
+        
+        let ref = s ? s.props.componentRef : f.componentRef
+        // Legacy resolution for ratsnest
+        if (ref.startsWith('shape:') && schematicRecords) {
+          const sym = schematicRecords.shapes.find(s => s.tldrawId === ref)
+          if (sym?.props?.designator) ref = sym.props.designator
+        }
+
         return {
           ...f,
           index: `a${i}` as any,
           x: s ? pxToMm(s.x) : f.x,
           y: s ? pxToMm(s.y) : f.y,
           rotation: s ? (s.rotation * 180) / Math.PI : f.rotation,
-          componentRef: s ? s.props.componentRef : f.componentRef,
+          componentRef: ref,
         }
       })
 
-      const ratsnestLines = computeRatsnest(netlist, currentFootprints)
+      const ratsnestLines = netlist ? computeRatsnest(netlist, currentFootprints) : []
       
       const ratsnestId = 'shape:ratsnest' as TLShapeId
       const s = editor.getShape(ratsnestId)

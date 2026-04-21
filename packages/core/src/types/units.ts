@@ -12,9 +12,12 @@ export const MM_TO_MIL = 39.3701;
 // Schematic uses a larger relative scale for better visibility (fewer px per mm makes shapes look bigger)
 export const SCHEMATIC_MM_TO_PX = 6;
 // PCB uses a high density scale for precision (10px per mm = 0.1mm grid)
-export const PCB_MM_TO_PX = 6;
+export const PCB_MM_TO_PX = 10;
 // High-visibility scaling for PCB footprints (multiplied after mmToPx)
-export const PCB_FOOTPRINT_SCALE = 4;
+export const PCB_FOOTPRINT_SCALE = 3.0;
+
+/** @deprecated Use SCHEMATIC_MM_TO_PX or PCB_MM_TO_PX */
+export const MM_TO_PX = PCB_MM_TO_PX; 
 
 export interface GridConfig {
   unit: GridUnit;

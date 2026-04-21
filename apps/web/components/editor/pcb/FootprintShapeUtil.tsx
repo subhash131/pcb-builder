@@ -54,55 +54,54 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
 
     const toX = (mm: number) => cx + mmToPx(mm) * PCB_FOOTPRINT_SCALE
     const toY = (mm: number) => cy + mmToPx(mm) * PCB_FOOTPRINT_SCALE
-
+    
     // Visual weight adjustments
     const strokeScale = Math.sqrt(PCB_FOOTPRINT_SCALE)
 
     return (
       <SVGContainer>
         {/* Courtyard — dashed keepout boundary */}
-          <rect
-            x={toX(def.courtyard.x)}
-            y={toY(def.courtyard.y)}
-            width={mmToPx(def.courtyard.w) * PCB_FOOTPRINT_SCALE}
-            height={mmToPx(def.courtyard.h) * PCB_FOOTPRINT_SCALE}
-            fill="none"
-            stroke={courtyardColor}
-            strokeWidth={1 * strokeScale}
-            strokeDasharray={`${3 * strokeScale} ${2 * strokeScale}`}
-            opacity={0.6}
+        <rect
+          x={toX(def.courtyard.x)}
+          y={toY(def.courtyard.y)}
+          width={mmToPx(def.courtyard.w) * PCB_FOOTPRINT_SCALE}
+          height={mmToPx(def.courtyard.h) * PCB_FOOTPRINT_SCALE}
+          fill="none"
+          stroke={courtyardColor}
+          strokeWidth={1 * strokeScale}
+          strokeDasharray={`${3 * strokeScale} ${2 * strokeScale}`}
+          opacity={0.6}
+        />
+
+        {/* Silkscreen lines */}
+        {def.silkscreen.map((line, i) => (
+          <line
+            key={i}
+            x1={toX(line.x1)} y1={toY(line.y1)}
+            x2={toX(line.x2)} y2={toY(line.y2)}
+            stroke={silkColor}
+            strokeWidth={1.5 * strokeScale}
+            opacity={0.8}
           />
 
-          {/* Silkscreen lines */}
-          {def.silkscreen.map((line, i) => (
-            <line
-              key={i}
-              x1={toX(line.x1)} y1={toY(line.y1)}
-              x2={toX(line.x2)} y2={toY(line.y2)}
-              stroke={silkColor}
-              strokeWidth={1.5 * strokeScale}
-              opacity={0.8}
-            />
-          ))}
+        {/* Pads */}
+        {def.pads.map(pad => {
+          const hasNet = !!netIds[pad.number]
+          const pw = mmToPx(pad.width) * PCB_FOOTPRINT_SCALE
+          const ph = mmToPx(pad.height) * PCB_FOOTPRINT_SCALE
+          const px = toX(pad.x) - pw / 2
+          const py = toY(pad.y) - ph / 2
 
-          {/* Pads */}
-          {def.pads.map(pad => {
-            const hasNet = !!netIds[pad.number]
-            const pw = mmToPx(pad.width) * PCB_FOOTPRINT_SCALE
-            const ph = mmToPx(pad.height) * PCB_FOOTPRINT_SCALE
-            const px = toX(pad.x) - pw / 2
-            const py = toY(pad.y) - ph / 2
-
-            return (
-              <g key={pad.number}>
-                <rect
-                  x={px} y={py}
-                  width={pw} height={ph}
-                  rx={pad.shape === 'circle' ? pw / 2 : 1}
-                  fill={hasNet ? connectedColor : padColor}
-                  stroke={padStroke}
-                  strokeWidth={1.5 * strokeScale}
-                />
+          return (
+            <g key={pad.number}>
+              <rect
+                x={px} y={py}
+                width={pw} height={ph}
+                rx={pad.shape === 'circle' ? pw / 2 : 1}
+                fill={hasNet ? connectedColor : padColor}
+                stroke={padStroke}
+                strokeWidth={1.5 * strokeScale}
+              />
               {/* pad number */}
               <text
                 x={toX(pad.x)}

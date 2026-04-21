@@ -100,7 +100,7 @@ export function PCBSheetSettings({ boardId, currentPreset, currentWidth, current
               <div className="h-1.5 w-1.5 rounded-full bg-[#ae40a5] mt-1" />
               <p className="text-[10px] text-[#ae40a5]/40 leading-tight">
                 PCB Layout uses mm units.<br/> 
-                Frame is for visual guidance.
+                Scale: 10px per mm.
               </p>
             </div>
           </div>
