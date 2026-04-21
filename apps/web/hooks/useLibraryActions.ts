@@ -7,16 +7,24 @@ export function useLibraryActions(editor: Editor) {
 
   const handleAddComponent = (type: SymbolType) => {
     const def = SYMBOL_DEFS[type]
+    if (!def) return
+
     const componentId = createShapeId()
 
     const component = new Component(
       componentId,
-      `${def.defaultDesignatorPrefix}${Date.now() % 1000}`,
-      def.defaultLabel,
-      def.defaultFootprint
+      `${def.properties.reference}${Date.now() % 1000}`,
+      def.properties.value,
+      def.properties.footprint
     )
+
     def.pins.forEach((p) =>
-      component.addPin({ id: p.id, name: p.label, number: p.id, type: 'passive' })
+      component.addPin({ 
+        id: `pin-${p.number}`, 
+        name: p.name, 
+        number: p.number, 
+        type: p.type as any // Simple mapping for now
+      })
     )
     addComponent(component)
 
@@ -26,12 +34,9 @@ export function useLibraryActions(editor: Editor) {
       x: Math.random() * 400 + 100,
       y: Math.random() * 400 + 100,
       props: {
-        w: def.w,
-        h: def.h,
-        symbolType: type,
+        symbolId: type,
         designator: component.designator,
-        label: component.value,
-        pins: def.pins,
+        value: component.value,
       },
     })
   }

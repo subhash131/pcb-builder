@@ -23,6 +23,8 @@ import { Toaster } from "@workspace/ui/components/sonner";
 
 import { ConvexAuthProvider } from "@convex-dev/auth/react";
 
+import { SymbolRegistryProvider } from "./components/providers/SymbolRegistryProvider";
+
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
     <NextThemesProvider
@@ -33,7 +35,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
     >
       <ConvexAuthProvider client={convex}>
         <NuqsAdapter>
-          {children}
+          <SymbolRegistryProvider>
+            {children}
+          </SymbolRegistryProvider>
           <Toaster />
         </NuqsAdapter>
       </ConvexAuthProvider>

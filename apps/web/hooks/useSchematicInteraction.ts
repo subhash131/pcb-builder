@@ -1,11 +1,12 @@
 import { useState, useRef, useEffect } from 'react'
-import { Editor, createShapeId } from 'tldraw'
+import { Editor, createShapeId, TLShape } from 'tldraw'
+import { SymbolRegistry } from '@workspace/core'
 
 type NearestPin = { x: number, y: number, shapeId: string, pinId: string } | null
 
 // Configuration constants for interaction behavior
 /** Distance in pixels at which a pin becomes "active" for proximity snapping */
-const PROXIMITY_RADIUS = 10
+const PROXIMITY_RADIUS = 15
 /** Minimum pixels to drag before a wiring session is officially started (prevents accidental clicks) */
 const WIRING_START_THRESHOLD = 5
 
@@ -39,15 +40,19 @@ export function useSchematicInteraction(editor: Editor) {
 
   // Listen for symbol movements and update bound wires
   useEffect(() => {
-    const cleanup = editor.sideEffects.registerAfterChangeHandler('shape', (prev, next) => {
+    const registry = SymbolRegistry.getInstance()
+
+    const cleanup = editor.sideEffects.registerAfterChangeHandler('shape', (prev: any, next: any) => {
       if (next.type !== 'symbol') return
       
-      // If position or size changed, update connected wires
-      if (prev.x !== next.x || prev.y !== next.y || (prev.props as any).w !== (next.props as any).w || (prev.props as any).h !== (next.props as any).h) {
+      // If position changed, update connected wires
+      if (prev.x !== next.x || prev.y !== next.y) {
+        const def = registry.get(next.props.symbolId)
+        if (!def) return
+
         const wires = editor.getCurrentPageShapes().filter(s => s.type === 'wire')
         for (const wire of wires) {
           const props = wire.props as any
-          let needsUpdate = false
           const absolutePoints = props.points.map((p: any) => ({ 
             x: p.x + wire.x, 
             y: p.y + wire.y 
@@ -70,7 +75,7 @@ export function useSchematicInteraction(editor: Editor) {
             const dy = Math.abs(oldPoint.y - neighbor.y)
 
             // If 2 points and moving diagonal: Add elbow
-            if (points.length === 2 && newPoint.x !== neighbor.x && newPoint.y !== neighbor.y) {
+            if (points.length === 2 && Math.abs(newPoint.x - neighbor.x) > 0.1 && Math.abs(newPoint.y - neighbor.y) > 0.1) {
               const elbow = { x: newPoint.x, y: neighbor.y }
               if (targetIndex === 0) result.splice(1, 0, elbow)
               else result.splice(points.length - 1, 0, elbow)
@@ -87,21 +92,23 @@ export function useSchematicInteraction(editor: Editor) {
           }
 
           if (props.startBinding?.shapeId === next.id) {
-            const pin = (next.props as any).pins.find((p: any) => p.id === props.startBinding.pinId)
+            const pinNumber = props.startBinding.pinId.replace('pin-', '')
+            const pin = def.pins.find((p: any) => p.number === pinNumber)
             if (pin) {
               const newPoint = {
-                x: next.x + (pin.x * (next.props as any).w),
-                y: next.y + (pin.y * (next.props as any).h)
+                x: next.x + (pin.connectionPoint.x - def.boundingBox.x),
+                y: next.y + (pin.connectionPoint.y - def.boundingBox.y)
               }
               const stretchedPoints = stretch(absolutePoints, 0, newPoint)
               updateWireShape(wire.id, stretchedPoints)
             }
           } else if (props.endBinding?.shapeId === next.id) {
-            const pin = (next.props as any).pins.find((p: any) => p.id === props.endBinding.pinId)
+            const pinNumber = props.endBinding.pinId.replace('pin-', '')
+            const pin = def.pins.find((p: any) => p.number === pinNumber)
             if (pin) {
               const newPoint = {
-                x: next.x + (pin.x * (next.props as any).w),
-                y: next.y + (pin.y * (next.props as any).h)
+                x: next.x + (pin.connectionPoint.x - def.boundingBox.x),
+                y: next.y + (pin.connectionPoint.y - def.boundingBox.y)
               }
               const stretchedPoints = stretch(absolutePoints, absolutePoints.length - 1, newPoint)
               updateWireShape(wire.id, stretchedPoints)
@@ -177,16 +184,20 @@ export function useSchematicInteraction(editor: Editor) {
       let nearest: NearestPin = null
       let minDistance = PROXIMITY_RADIUS
 
+      const registry = SymbolRegistry.getInstance()
+
       for (const shape of shapes) {
         if (shape.type === 'symbol') {
-          const props = shape.props as any
-          for (const pin of props.pins) {
-            const pinX = shape.x + (pin.x * props.w)
-            const pinY = shape.y + (pin.y * props.h)
+          const def = registry.get((shape.props as any).symbolId)
+          if (!def) continue
+
+          for (const pin of def.pins) {
+            const pinX = shape.x + (pin.connectionPoint.x - def.boundingBox.x)
+            const pinY = shape.y + (pin.connectionPoint.y - def.boundingBox.y)
             const dist = Math.sqrt((x - pinX)**2 + (y - pinY)**2)
             if (dist < minDistance) {
               minDistance = dist
-              nearest = { x: pinX, y: pinY, shapeId: shape.id, pinId: pin.id }
+              nearest = { x: pinX, y: pinY, shapeId: shape.id, pinId: `pin-${pin.number}` }
             }
           }
         }
