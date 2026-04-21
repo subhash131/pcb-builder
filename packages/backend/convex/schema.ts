@@ -9,6 +9,9 @@ export default defineSchema({
     sheetWidth: v.optional(v.number()),
     sheetHeight: v.optional(v.number()),
     sheetPreset: v.optional(v.string()),
+    cameraX: v.optional(v.number()),
+    cameraY: v.optional(v.number()),
+    cameraZoom: v.optional(v.number()),
   }),
 
   shapes: defineTable({
@@ -62,6 +65,10 @@ export default defineSchema({
       unit: v.string(),
       size: v.number(),
     }),
+    boardPreset: v.optional(v.string()),
+    cameraX: v.optional(v.number()),
+    cameraY: v.optional(v.number()),
+    cameraZoom: v.optional(v.number()),
     createdAt: v.number(),
     updatedAt: v.number(),
   }).index("by_schematicId", ["schematicId"]),

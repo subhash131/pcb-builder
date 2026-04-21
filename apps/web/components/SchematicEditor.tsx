@@ -1,8 +1,7 @@
-import { Tldraw, useEditor, track } from 'tldraw'
+import { Tldraw, useEditor } from 'tldraw'
 import 'tldraw/tldraw.css'
 import { SymbolShapeUtil } from './editor/SymbolShape'
 import { WireShapeUtil } from './editor/WireShape'
-import { useBoardStore } from '../store/useBoardStore'
 import { useSchematicStore } from '../store/useSchematicStore'
 import { useNetlistSync } from '../hooks/useNetlistSync'
 import { useLibraryActions } from '../hooks/useLibraryActions'
@@ -14,7 +13,18 @@ import { ProximityHotspot } from './editor/ProximityHotspot'
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
-import { createContext, useContext, useEffect, useRef } from 'react'
+import { createContext, useContext, useEffect, useRef, useMemo } from 'react'
+import { TLRecord } from 'tldraw'
+
+function debounce<T extends (...args: any[]) => any>(fn: T, ms: number) {
+  let timeoutId: ReturnType<typeof setTimeout>
+  const debounced = (...args: Parameters<T>) => {
+    clearTimeout(timeoutId)
+    timeoutId = setTimeout(() => fn(...args), ms)
+  }
+  debounced.cancel = () => clearTimeout(timeoutId)
+  return debounced
+}
 import { SheetSettings } from './editor/SheetSettings'
 import { ErcReportPanel } from './editor/ErcReportPanel'
 
@@ -22,19 +32,21 @@ const SchematicContext = createContext<Id<"schematics"> | null>(null)
 
 const shapeUtils = [SymbolShapeUtil, WireShapeUtil]
 
+import { mmToPx } from '@workspace/core'
+
 export const PAGE_PRESETS = {
-  'A5': { width: 2100, height: 1480, name: 'A5' },
-  'A4': { width: 2970, height: 2100, name: 'A4' },
-  'A3': { width: 4200, height: 2970, name: 'A3' },
-  'A2': { width: 5940, height: 4200, name: 'A2' },
-  'A1': { width: 8410, height: 5940, name: 'A1' },
-  'A0': { width: 11890, height: 8410, name: 'A0' },
-  'ANSI A': { width: 2794, height: 2159, name: 'ANSI A' },
-  'ANSI B': { width: 4318, height: 2794, name: 'ANSI B' },
-  'ANSI C': { width: 5588, height: 4318, name: 'ANSI C' },
-  'ANSI D': { width: 8636, height: 5588, name: 'ANSI D' },
-  'ANSI E': { width: 11176, height: 8636, name: 'ANSI E' },
-  'Custom': { width: 2970, height: 2100, name: 'Custom' },
+  'A5': { width: 210, height: 148, name: 'A5' },
+  'A4': { width: 297, height: 210, name: 'A4' },
+  'A3': { width: 420, height: 297, name: 'A3' },
+  'A2': { width: 594, height: 420, name: 'A2' },
+  'A1': { width: 841, height: 594, name: 'A1' },
+  'A0': { width: 1189, height: 841, name: 'A0' },
+  'ANSI A': { width: 279, height: 216, name: 'ANSI A' },
+  'ANSI B': { width: 432, height: 279, name: 'ANSI B' },
+  'ANSI C': { width: 559, height: 432, name: 'ANSI C' },
+  'ANSI D': { width: 864, height: 559, name: 'ANSI D' },
+  'ANSI E': { width: 1118, height: 864, name: 'ANSI E' },
+  'Custom': { width: 297, height: 210, name: 'Custom' },
 }
 
 const KiCadSheet = () => {
@@ -43,18 +55,21 @@ const KiCadSheet = () => {
 
   if (!schematicId) return null
 
-  const width = schematic?.sheetWidth ?? 2970
-  const height = schematic?.sheetHeight ?? 2100
+  let rawWidth = schematic?.sheetWidth ?? 297
+  let rawHeight = schematic?.sheetHeight ?? 210
   const presetName = schematic?.sheetPreset ?? 'A4'
 
-  const PAGE_W = width
-  const PAGE_H = height
-  const MARGIN = 100
-  const FRAME_W = 40 // Space between the two red lines for labels
+  // Migration: If detecting old 0.1mm units (e.g. 2970), convert to mm
+  if (rawWidth > 1500) rawWidth = rawWidth / 10
+  if (rawHeight > 1500) rawHeight = rawHeight / 10
+
+  const PAGE_W = mmToPx(rawWidth)
+  const PAGE_H = mmToPx(rawHeight)
+  const MARGIN = mmToPx(10) // 10mm margin
+  const FRAME_W = mmToPx(4)  // 4mm label frame
   
-  // Fixed physical scale: 1 division = 50 mm = 500 canvas units (1 unit = 0.1 mm)
-  // This keeps the tick spacing constant regardless of sheet size.
-  const DIVISION_SIZE = 500 // canvas units per division (50 mm)
+  // 1 division = 50 mm
+  const DIVISION_SIZE = mmToPx(50) 
   const innerW = PAGE_W - (MARGIN * 2)
   const innerH = PAGE_H - (MARGIN * 2)
   const usableW = innerW - FRAME_W * 2
@@ -101,12 +116,19 @@ const KiCadSheet = () => {
       {Array.from({ length: hParts }).map((_, i) => {
         const xPos = MARGIN + FRAME_W + ((innerW - FRAME_W * 2) / hParts) * (i + 0.5)
         const tickX = MARGIN + FRAME_W + ((innerW - FRAME_W * 2) / hParts) * (i + 1)
+        const labelStyle: React.CSSProperties = {
+          position: 'absolute',
+          left: xPos,
+          transform: 'translateX(-50%) translateY(-50%)',
+          color: '#cc0000',
+          fontFamily: 'monospace',
+          fontSize: 24,
+          fontWeight: 'bold'
+        }
         return (
           <div key={`h-${i}`}>
-            {/* Top labels */}
-            <div style={{ position: 'absolute', top: MARGIN + 4, left: xPos, transform: 'translateX(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{i + 1}</div>
-            {/* Bottom labels */}
-            <div style={{ position: 'absolute', bottom: MARGIN + 4, left: xPos, transform: 'translateX(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{i + 1}</div>
+            <div style={{ ...labelStyle, top: MARGIN + (FRAME_W / 2) }}>{i + 1}</div>
+            <div style={{ ...labelStyle, bottom: MARGIN + (FRAME_W / 2), transform: 'translateX(-50%) translateY(50%)' }}>{i + 1}</div>
             {/* Ticks */}
             {i < hParts - 1 && (
               <>
@@ -122,12 +144,19 @@ const KiCadSheet = () => {
       {Array.from({ length: vParts }).map((_, i) => {
         const yPos = MARGIN + FRAME_W + ((innerH - FRAME_W * 2) / vParts) * (i + 0.5)
         const tickY = MARGIN + FRAME_W + ((innerH - FRAME_W * 2) / vParts) * (i + 1)
+        const labelStyle: React.CSSProperties = {
+          position: 'absolute',
+          top: yPos,
+          transform: 'translateY(-50%) translateX(-50%)',
+          color: '#cc0000',
+          fontFamily: 'monospace',
+          fontSize: 24,
+          fontWeight: 'bold'
+        }
         return (
           <div key={`v-${i}`}>
-            {/* Left labels */}
-            <div style={{ position: 'absolute', left: MARGIN + 8, top: yPos, transform: 'translateY(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{String.fromCharCode(65 + i)}</div>
-            {/* Right labels */}
-            <div style={{ position: 'absolute', right: MARGIN + 8, top: yPos, transform: 'translateY(-50%)', color: '#cc0000', fontFamily: 'monospace', fontSize: 24, fontWeight: 'bold' }}>{String.fromCharCode(65 + i)}</div>
+            <div style={{ ...labelStyle, left: MARGIN + (FRAME_W / 2) }}>{String.fromCharCode(65 + i)}</div>
+            <div style={{ ...labelStyle, right: MARGIN + (FRAME_W / 2), transform: 'translateY(-50%) translateX(50%)' }}>{String.fromCharCode(65 + i)}</div>
             {/* Ticks */}
             {i < vParts - 1 && (
               <>
@@ -244,6 +273,46 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   // ── DOWNLOAD: receive changes from Convex ──
   const records = useQuery(api.schematics.getRecords, { schematicId })
   
+  // ── CAMERA PERSISTENCE: Download ──
+  const cameraRestored = useRef(false)
+  useEffect(() => {
+    if (!schematic || cameraRestored.current) return
+    if (schematic.cameraX !== undefined && schematic.cameraY !== undefined && schematic.cameraZoom !== undefined) {
+      editor.setCamera({ x: schematic.cameraX, y: schematic.cameraY, z: schematic.cameraZoom })
+    }
+    cameraRestored.current = true
+  }, [editor, schematic])
+
+  // ── CAMERA PERSISTENCE: Upload (Debounced) ──
+  const updateCamera = useMutation(api.schematics.updateCamera)
+  const pushCamera = useMemo(() => debounce(async (cam: { x: number, y: number, z: number }) => {
+    try {
+      await updateCamera({ id: schematicId, x: cam.x, y: cam.y, zoom: cam.z })
+    } catch (err) {
+      console.error("Failed to sync camera", err)
+    }
+  }, 1000), [updateCamera, schematicId])
+
+  useEffect(() => {
+    const cleanup = editor.store.listen(({ changes }) => {
+      // Camera state is usually in 'camera' or 'instance' records (session scope)
+      const hasCameraChanges = 
+        Object.values(changes.updated).some(([, next]) => 
+          next.typeName === 'camera' || next.typeName === 'instance'
+        )
+      
+      if (hasCameraChanges) {
+        const cam = editor.getCamera()
+        pushCamera(cam)
+      }
+    }) // Removed { source: 'user', scope: 'document' } to capture all scopes
+
+    return () => {
+      cleanup()
+      pushCamera.cancel()
+    }
+  }, [editor, pushCamera])
+
   useEffect(() => {
     if (!records) return
 
@@ -355,6 +424,7 @@ export default function SchematicEditor({ schematicId }: { schematicId: Id<"sche
           inferDarkMode={false}
           components={{ 
             OnTheCanvas: KiCadSheet,
+            Toolbar: null,
             StylePanel: null,
             PageMenu: null,
             MainMenu: null,
