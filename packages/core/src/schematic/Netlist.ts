@@ -92,6 +92,7 @@ export class Netlist {
   }
 
   getComponentPins(componentRef: string): PinNode[] {
+    if (!this.graph.hasNode(componentRef)) return []
     return this.graph.neighbors(componentRef)
       .map(n => this.graph.getNodeAttributes(n) as PinNode)
       .filter(n => n.kind === 'pin')

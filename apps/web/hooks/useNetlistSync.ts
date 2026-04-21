@@ -26,7 +26,7 @@ export function useNetlistSync(
         
         // Ensure netlist is triggered safely
         if (pinA && pinB) {
-          connectPins(compA.id, pinA, compB.id, pinB, `NET_${Date.now()}`)
+          connectPins(compA.props.designator, pinA, compB.props.designator, pinB, `NET_${Date.now()}`)
         }
       }
     })

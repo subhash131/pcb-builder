@@ -40,7 +40,7 @@ export class BoardOutlineShapeUtil extends BaseBoxShapeUtil<BoardOutlineShape> {
         style={{
           width: mmToPx(w),
           height: mmToPx(h),
-          border: '2px solid #ffff00', // Yellow board outline as per standard
+          border: '3px solid #ffff00', // Yellow board outline as per standard
           boxSizing: 'border-box',
           pointerEvents: 'none',
           backgroundColor: 'rgba(0, 50, 0, 0.4)', // Dark FR4-ish green
