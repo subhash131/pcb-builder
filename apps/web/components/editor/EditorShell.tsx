@@ -10,14 +10,52 @@ import { Layout, Cpu, Box, Share2, Settings } from 'lucide-react'
 import { useEditorStore } from '../../store/useEditorStore'
 import { useSchematicStore } from '../../store/useSchematicStore'
 import { ChatPanel } from './ChatPanel'
+import { SyncDialog } from './SyncDialog'
+import { SchematicPCBSync } from '@workspace/core'
+import { Badge } from '@workspace/ui/components/badge'
+import { Button } from '@workspace/ui/components/button'
+import { RefreshCw } from 'lucide-react'
+import { toast } from 'sonner'
 
 const SchematicEditor = dynamic(() => import('../SchematicEditor'), { ssr: false })
 const PCBEditor = dynamic(() => import('../PCBEditor'), { ssr: false })
 
 export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) {
+  const [isSyncDialogOpen, setIsSyncDialogOpen] = useState(false)
+  const [isApplying, setIsApplying] = useState(false)
+  
   const activeTab = useEditorStore(s => s.activeTab)
   const setActiveTab = useEditorStore(s => s.setActiveTab)
   const netlist = useSchematicStore(s => s.netlist)
+
+  // Fetch PCB board and footprints
+  const board = useQuery(api.pcb.getBoardBySchematicId, { schematicId })
+  const footprints = useQuery(api.pcb.getFootprints, { boardId: board?._id as any })
+  const applySyncActions = useMutation(api.pcb.applySyncActions)
+
+  // Compute sync report
+  const syncReport = netlist && footprints 
+    ? SchematicPCBSync.diff(netlist, footprints)
+    : { actions: [], hasChanges: false, destructive: false }
+
+  const handleApplySync = async () => {
+    if (!board || !syncReport.hasChanges) return
+    
+    setIsApplying(true)
+    try {
+      await applySyncActions({
+        boardId: board._id,
+        actions: syncReport.actions
+      })
+      toast.success('PCB successfully updated from schematic')
+      setIsSyncDialogOpen(false)
+    } catch (error) {
+      console.error('Sync failed:', error)
+      toast.error('Failed to update PCB')
+    } finally {
+      setIsApplying(false)
+    }
+  }
   
   const syncPCB = useMutation(api.pcb.syncFromSchematic)
   
@@ -54,12 +92,24 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
               <Layout className="w-4 h-4" />
               Schematic
             </button>
-            <button 
-              onClick={() => handleTabChange('pcb')}
-              className={`flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition ${activeTab === 'pcb' ? 'bg-slate-800 text-white shadow-sm' : 'text-slate-400 hover:text-slate-200'}`}
+            <button
+              onClick={() => setActiveTab('pcb')}
+              className={`px-4 h-full flex items-center gap-2 text-sm font-medium transition-colors border-b-2 relative ${
+                activeTab === 'pcb' 
+                  ? 'border-blue-500 text-blue-400 bg-blue-500/5' 
+                  : 'border-transparent text-slate-400 hover:text-slate-200 hover:bg-white/5'
+              }`}
             >
               <Cpu className="w-4 h-4" />
               PCB Layout
+              {syncReport.hasChanges && (
+                <Badge 
+                  variant={syncReport.destructive ? "destructive" : "secondary"}
+                  className="ml-1 h-5 min-w-[20px] px-1 flex items-center justify-center text-[10px]"
+                >
+                  {syncReport.actions.length}
+                </Badge>
+              )}
             </button>
             <button 
               onClick={() => handleTabChange('3d')}
@@ -71,19 +121,37 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
           </nav>
         </div>
 
-        <div className="flex items-center gap-3">
-          <button className="p-2 text-slate-400 hover:text-white transition">
-            <Share2 className="w-5 h-5" />
+        <div className="flex items-center gap-2">
+          {activeTab === 'pcb' && syncReport.hasChanges && (
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-8 gap-2 bg-blue-500/10 border-blue-500/30 text-blue-400 hover:bg-blue-500/20 hover:text-blue-300"
+              onClick={() => setIsSyncDialogOpen(true)}
+            >
+              <RefreshCw className="w-3.5 h-3.5" />
+              Update from Schematic
+            </Button>
+          )}
+          <button className="p-2 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-md transition-colors">
+            <Share2 className="w-4 h-4" />
           </button>
-          <button className="p-2 text-slate-400 hover:text-white transition">
-            <Settings className="w-5 h-5" />
+          <button className="p-2 text-slate-400 hover:text-slate-200 hover:bg-white/5 rounded-md transition-colors">
+            <Settings className="w-4 h-4" />
           </button>
-          <div className="w-8 h-8 rounded-full bg-gradient-to-tr from-blue-500 to-purple-500 border border-slate-700" />
         </div>
       </header>
 
       {/* Main Editor Area */}
       <div className="flex-1 relative overflow-hidden">
+        {/* Sync Dialog */}
+        <SyncDialog 
+          isOpen={isSyncDialogOpen}
+          onClose={() => setIsSyncDialogOpen(false)}
+          report={syncReport}
+          onConfirm={handleApplySync}
+          isApplying={isApplying}
+        />
         {activeTab === 'schematic' && (
           <div className="absolute inset-0">
             <SchematicEditor schematicId={schematicId} />
