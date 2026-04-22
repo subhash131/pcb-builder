@@ -83,12 +83,12 @@ export function LibrarySidebar({ onAddComponent }: LibrarySidebarProps) {
       >
         Push Switch
       </button>
-      <button 
+{/* <button 
         onClick={() => onAddComponent('switch')} 
         className="px-4 py-2 bg-slate-700 text-white text-xs font-medium rounded hover:bg-black transition text-left"
       >
         Slide Switch
-      </button>
+      </button> */}
       {/* <button 
         onClick={() => onAddComponent('resistor_10k')} 
         className="px-4 py-2 bg-slate-700 text-white text-xs font-medium rounded hover:bg-black transition text-left"
