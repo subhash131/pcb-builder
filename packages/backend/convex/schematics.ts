@@ -68,17 +68,62 @@ export const sync = mutation({
   },
   handler: async (ctx: MutationCtx, args: { schematicId: Id<"schematics">; updates: any[]; deletions: string[] }) => {
     const { schematicId, updates, deletions } = args;
+    const deletedShapeIds = new Set(deletions.filter((id) => typeof id === "string" && id.startsWith("shape")));
+    const updatedIds = new Set(
+      updates
+        .filter((record) => typeof record?.id === "string")
+        .map((record) => record.id)
+    );
+
+    // If a component is deleted, any existing wires/bindings still pointing at it are stale.
+    // Keep records that are explicitly updated in this same sync call; replacements re-bind
+    // existing wire IDs this way.
+    if (deletedShapeIds.size > 0) {
+      const shapes = await ctx.db
+        .query("shapes")
+        .withIndex("by_schematicId", (q: any) => q.eq("schematicId", schematicId))
+        .collect();
+
+      for (const shape of shapes) {
+        if (updatedIds.has(shape.tldrawId)) continue;
+
+        const startShapeId = shape.props?.startBinding?.shapeId;
+        const endShapeId = shape.props?.endBinding?.shapeId;
+        if (shape.type === "wire" && (deletedShapeIds.has(startShapeId) || deletedShapeIds.has(endShapeId))) {
+          console.log(`[Backend] Sync Cleanup: Deleting stale wire ${shape.tldrawId} connected to deleted shape.`);
+          await ctx.db.delete(shape._id);
+        }
+      }
+
+      const bindings = await ctx.db
+        .query("bindings")
+        .withIndex("by_schematicId", (q: any) => q.eq("schematicId", schematicId))
+        .collect();
+
+      for (const binding of bindings) {
+        if (updatedIds.has(binding.tldrawId)) continue;
+        if (deletedShapeIds.has(binding.fromId) || deletedShapeIds.has(binding.toId)) {
+          console.log(`[Backend] Sync Cleanup: Deleting stale binding ${binding.tldrawId} connected to deleted shape.`);
+          await ctx.db.delete(binding._id);
+        }
+      }
+    }
 
     // Handle Deletions
     for (const tldrawId of deletions) {
       if (typeof tldrawId !== "string") continue;
+      console.log(`[Backend] Sync Deletion: Attempting to delete ${tldrawId} from schematic ${schematicId}`);
       const table = tldrawId.startsWith('shape') ? 'shapes' : 'bindings' as any;
       const existing = await ctx.db
         .query(table)
         .withIndex("by_tldrawId_schematicId", (q: any) => q.eq("tldrawId", tldrawId).eq("schematicId", schematicId))
         .unique();
+      
       if (existing) {
+        console.log(`[Backend] Sync Deletion: Found record! Convex ID: ${existing._id}. Deleting now...`);
         await ctx.db.delete(existing._id);
+      } else {
+        console.log(`[Backend] Sync Deletion: WARNING - Could not find record with tldrawId ${tldrawId} in table ${table}`);
       }
     }
 

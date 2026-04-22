@@ -13,7 +13,7 @@ import { ProximityHotspot } from './editor/ProximityHotspot'
 import { useQuery, useMutation } from "convex/react"
 import { api } from "@workspace/backend/_generated/api"
 import { Id } from "@workspace/backend/_generated/dataModel"
-import { createContext, useContext, useEffect, useRef, useMemo } from 'react'
+import { createContext, useContext, useEffect, useRef, useMemo, useState } from 'react'
 
 function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
   let timeoutId: ReturnType<typeof setTimeout>
@@ -24,6 +24,8 @@ function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number)
   debounced.cancel = () => clearTimeout(timeoutId)
   return debounced
 }
+
+const recordsEqual = (a: unknown, b: unknown) => JSON.stringify(a) === JSON.stringify(b)
 import { SheetSettings } from './editor/SheetSettings'
 import { ErcReportPanel } from './editor/ErcReportPanel'
 
@@ -213,6 +215,7 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
   const isHydrated = useRef(false)
   // Track IDs and timestamps of things the LOCAL user has touched
   const localEdits = useRef<Record<string, number>>({})
+  const [syncRetryTick, setSyncRetryTick] = useState(0)
 
   // Logic hooks
   useNetlistSync(editor)
@@ -341,7 +344,7 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
       } as TLShape
     }
 
-    const mapBinding = (b: any) => ({
+    const mapBinding = (b: any): TLRecord => ({
       id: b.tldrawId as any,
       typeName: 'binding' as const,
       type: b.type,
@@ -361,28 +364,77 @@ function EditorUI({ schematicId }: { schematicId: Id<"schematics"> }) {
       return
     }
 
-    // ── Live sync ──
+    // ── Live sync: Reconciliation ──
     const now = Date.now()
     const OWNERSHIP_TTL = 10_000 
-    const newRecords: TLRecord[] = []
+    const protectedRecordIds = new Set<string>()
     
+    const dbShapeIds = new Set(records.shapes.map(s => s.tldrawId))
+    const dbBindingIds = new Set(records.bindings.map(b => b.tldrawId))
+    const allDbIds = new Set([...dbShapeIds, ...dbBindingIds])
+
+    // 1. Identify records that exist in DB but not in store (Adds/Updates)
+    const newRecords: TLRecord[] = []
     records.shapes.forEach(s => {
       const r = mapShape(s)
       if (!r) return
-      const isNew = !editor.store.has(r.id)
+      
+      const existing = editor.store.get(r.id)
       const userOwns = (localEdits.current[s.tldrawId] ?? 0) > now - OWNERSHIP_TTL
-      if (isNew && !userOwns) newRecords.push(r)
+      
+      if (!userOwns) {
+        if (!existing || !recordsEqual(existing, r)) {
+          newRecords.push(r)
+        }
+      } else if (!existing || !recordsEqual(existing, r)) {
+        protectedRecordIds.add(s.tldrawId)
+      }
     })
 
     records.bindings.forEach(b => {
       const r = mapBinding(b)
-      if (!editor.store.has(r.id)) newRecords.push(r)
+      const existing = editor.store.get(r.id)
+      const userOwns = (localEdits.current[b.tldrawId] ?? 0) > now - OWNERSHIP_TTL
+
+      if (!userOwns && (!existing || !recordsEqual(existing, r))) {
+        newRecords.push(r)
+      } else if (userOwns && (!existing || !recordsEqual(existing, r))) {
+        protectedRecordIds.add(b.tldrawId)
+      }
     })
     
     if (newRecords.length > 0) {
       editor.store.mergeRemoteChanges(() => editor.store.put(newRecords))
     }
-  }, [editor, records])
+
+    // 2. Identify records that exist in store but NOT in DB (Deletions)
+    const storeIds = editor.store.allRecords().map(r => r.id)
+    const idsToRemove = storeIds.filter(id => {
+      if (!id.startsWith('shape:') && !id.startsWith('binding:')) return false
+      // If it's in the store but not in DB, and the user didn't just create it locally
+      const userOwns = (localEdits.current[id] ?? 0) > now - OWNERSHIP_TTL
+      if (!allDbIds.has(id) && userOwns) {
+        protectedRecordIds.add(id)
+      }
+      return !allDbIds.has(id) && !userOwns
+    })
+
+    if (idsToRemove.length > 0) {
+      console.log(`[Frontend Sync] Removing ${idsToRemove.length} stale records from store.`);
+      editor.store.mergeRemoteChanges(() => editor.store.remove(idsToRemove))
+    }
+
+    if (protectedRecordIds.size > 0) {
+      const retryIn = Math.max(
+        0,
+        Math.min(...Array.from(protectedRecordIds).map((id) => (
+          (localEdits.current[id] ?? 0) + OWNERSHIP_TTL - now
+        )))
+      )
+      const retry = window.setTimeout(() => setSyncRetryTick((tick) => tick + 1), retryIn + 50)
+      return () => window.clearTimeout(retry)
+    }
+  }, [editor, records, syncRetryTick])
 
   return (
     <>

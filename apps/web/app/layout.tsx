@@ -19,7 +19,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "AI Agent Store",
+  title: "PCB Builder",
   description: "Project by subhash",
 };
 
