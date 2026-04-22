@@ -211,6 +211,8 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
         } else if (defKey.startsWith('LED')) {
           if (defKey.includes('0603')) defKey = 'LED0603';
           else if (defKey.includes('0805')) defKey = 'LED0805';
+          else if (defKey.includes('3MM')) defKey = 'LED_3MM';
+          else defKey = 'LED_3MM'; // Default for generic LED
         } else if (defKey.includes('0603')) {
           defKey = 'R0603';
         } else if (defKey.includes('0805')) {
@@ -221,6 +223,8 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
         // Resolve nets for each pad
         const netIds: Record<string, string | null> = {}
+        let value = ""
+
         if (netlist) {
           // Legacy: Handle footprints saved with shape IDs instead of designators
           let ref = f.componentRef
@@ -234,6 +238,11 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
             const net = netlist.getPinNet(`${ref}.pin-${p.pinNumber}`)
             netIds[p.pinNumber] = net
           })
+
+          if (schematicRecords) {
+            const sym = schematicRecords.shapes.find(s => s.props?.designator === ref || s.tldrawId === ref)
+            value = sym?.props?.value || ""
+          }
         }
 
         const shapeData = {
@@ -247,6 +256,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
             footprintId: defKey,
             layer: f.layer,
             netIds,
+            value,
           }
         }
 

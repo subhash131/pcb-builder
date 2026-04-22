@@ -8,6 +8,7 @@ export type FootprintShape = TLBaseShape<
     footprintId: string
     layer: 'F.Cu' | 'B.Cu'
     netIds: Record<string, string | null> // padNumber -> netId/netName
+    value?: string
   }
 >
 
@@ -68,9 +69,9 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
           height={mmToPx(def.courtyard.h) * PCB_FOOTPRINT_SCALE}
           fill="none"
           stroke={courtyardColor}
-          strokeWidth={1 * strokeScale}
-          strokeDasharray={`${3 * strokeScale} ${2 * strokeScale}`}
-          opacity={0.6}
+          strokeWidth={2 * strokeScale} // Slightly thicker
+          strokeDasharray={`${6 * strokeScale} ${4 * strokeScale}`} // More visible dashes
+          opacity={1.0} // Full opacity
         />
 
         {/* Silkscreen lines */}
@@ -79,6 +80,20 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
             key={i}
             x1={toX(line.x1)} y1={toY(line.y1)}
             x2={toX(line.x2)} y2={toY(line.y2)}
+            stroke={silkColor}
+            strokeWidth={1.5 * strokeScale}
+            opacity={0.8}
+          />
+        ))}
+
+        {/* Silkscreen circles */}
+        {def.silkscreenCircles?.map((circle, i) => (
+          <circle
+            key={`c-${i}`}
+            cx={toX(circle.cx)}
+            cy={toY(circle.cy)}
+            r={mmToPx(circle.r) * PCB_FOOTPRINT_SCALE}
+            fill="none"
             stroke={silkColor}
             strokeWidth={1.5 * strokeScale}
             opacity={0.8}
@@ -136,6 +151,22 @@ export class FootprintShapeUtil extends ShapeUtil<FootprintShape> {
         >
           {componentRef}
         </text>
+        {/* Value label — below courtyard */}
+        {shape.props.value && (
+          <text
+            x={cx}
+            y={toY(def.courtyard.y + def.courtyard.h) + 2 * PCB_FOOTPRINT_SCALE}
+            textAnchor="middle"
+            dominantBaseline="hanging"
+            fontSize={mmToPx(0.7) * PCB_FOOTPRINT_SCALE}
+            fill={silkColor}
+            fontFamily="monospace"
+            opacity={0.7}
+            style={{ userSelect: 'none', pointerEvents: 'none' }}
+          >
+            {shape.props.value}
+          </text>
+        )}
       </SVGContainer>
     )
   }

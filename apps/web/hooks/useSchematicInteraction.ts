@@ -3,6 +3,7 @@ import { Editor, createShapeId, TLShape, TLShapeId } from 'tldraw'
 import { SymbolRegistry } from '@workspace/core'
 import { WireShape } from '../components/editor/WireShape'
 import { SymbolShape } from '../components/editor/SymbolShape'
+import { routeWire } from '../lib/routeUtils'
 
 type NearestPin = { x: number, y: number, shapeId: string, pinId: string } | null
 
@@ -45,88 +46,69 @@ export function useSchematicInteraction(editor: Editor) {
     const registry = SymbolRegistry.getInstance()
 
     const cleanup = editor.sideEffects.registerAfterChangeHandler('shape', (prev: TLShape, next: TLShape) => {
-      if (next.type !== 'symbol') return
-      
-      const nextSymbol = next as SymbolShape
-      const prevSymbol = prev as SymbolShape
+      // 1. Handle Symbol Movement -> Update connected wires
+      if (next.type === 'symbol') {
+        const nextSymbol = next as SymbolShape
+        const prevSymbol = prev as SymbolShape
 
-      // If position changed, update connected wires
-      if (prevSymbol.x !== nextSymbol.x || prevSymbol.y !== nextSymbol.y) {
-        const def = registry.get(nextSymbol.props.symbolId)
-        if (!def) return
+        if (prevSymbol.x !== nextSymbol.x || prevSymbol.y !== nextSymbol.y) {
+          const def = registry.get(nextSymbol.props.symbolId)
+          if (!def) return
 
-        const wires = editor.getCurrentPageShapes().filter((s): s is WireShape => s.type === 'wire')
-        for (const wire of wires) {
-          const props = wire.props
-          const absolutePoints = props.points.map((p) => ({ 
-            x: p.x + wire.x, 
-            y: p.y + wire.y 
-          }))
-
-          const stretch = (points: {x: number, y: number}[], targetIndex: number, newPoint: {x: number, y: number}) => {
-            const result = [...points]
-            const oldPoint = result[targetIndex]
-            if (!oldPoint) return result
-            
-            result[targetIndex] = newPoint
-
-            const neighborIndex = targetIndex === 0 ? 1 : points.length - 2
-            if (neighborIndex < 0 || neighborIndex >= points.length) return result
-
-            const neighbor = result[neighborIndex]
-            if (!neighbor) return result
-            
-            const dx = Math.abs(oldPoint.x - neighbor.x)
-            const dy = Math.abs(oldPoint.y - neighbor.y)
-
-            // If only 2 points, we MUST add an elbow to stay orthogonal
-            if (points.length === 2) {
-              const elbow = { x: newPoint.x, y: neighbor.y }
-              if (targetIndex === 0) result.splice(1, 0, elbow)
-              else result.splice(points.length - 1, 0, elbow)
-              return result
-            }
-
-            // If 3+ points, maintain orthogonality by adjusting the neighbor
-            // Use a generous delta to identify orientation
-            if (dx < 5) { // Was Vertical
-              result[neighborIndex] = { x: newPoint.x, y: neighbor.y }
-            } else if (dy < 5) { // Was Horizontal
-              result[neighborIndex] = { x: neighbor.x, y: newPoint.y }
-            } else {
-              // Fallback: If for some reason it wasn't orthogonal, force an elbow
-              const elbow = { x: newPoint.x, y: neighbor.y }
-              result.splice(targetIndex === 0 ? 1 : points.length - 1, 0, elbow)
-            }
-            return result
-          }
-
-          if (props.startBinding?.shapeId === nextSymbol.id) {
-            const pinNumber = props.startBinding.pinId.replace('pin-', '')
-            const pin = def.pins.find((p) => p.number === pinNumber)
-            if (pin) {
-              const newPoint = {
-                x: next.x + (pin.connectionPoint.x - def.boundingBox.x),
-                y: next.y + (pin.connectionPoint.y - def.boundingBox.y)
-              }
-              const stretchedPoints = stretch(absolutePoints, 0, newPoint)
-              updateWireShape(wire.id, stretchedPoints)
-            }
-          } else if (props.endBinding?.shapeId === nextSymbol.id) {
-            const pinNumber = props.endBinding.pinId.replace('pin-', '')
-            const pin = def.pins.find((p) => p.number === pinNumber)
-            if (pin) {
-              const newPoint = {
-                x: nextSymbol.x + (pin.connectionPoint.x - def.boundingBox.x),
-                y: nextSymbol.y + (pin.connectionPoint.y - def.boundingBox.y)
-              }
-              const stretchedPoints = stretch(absolutePoints, absolutePoints.length - 1, newPoint)
-              updateWireShape(wire.id, stretchedPoints)
+          const wires = editor.getCurrentPageShapes().filter((s): s is WireShape => s.type === 'wire')
+          for (const wire of wires) {
+            const { startBinding, endBinding } = wire.props
+            if (startBinding?.shapeId === nextSymbol.id || endBinding?.shapeId === nextSymbol.id) {
+              reRouteWire(wire)
             }
           }
         }
       }
+
+      // 2. Handle New Wire / Binding Added -> Auto-route if needed
+      if (next.type === 'wire') {
+        const wire = next as WireShape
+        const points = wire.props.points
+        
+        // If wire has both bindings but is just a single diagonal/naive segment, auto-route it!
+        if (wire.props.startBinding && wire.props.endBinding && points.length <= 2) {
+          const isDiagonal = points.length === 2 && points[0].x !== points[1].x && points[0].y !== points[1].y
+          if (isDiagonal || points.length < 2) {
+            reRouteWire(wire)
+          }
+        }
+      }
     })
+
+    function reRouteWire(wire: WireShape) {
+      const { startBinding, endBinding } = wire.props
+      if (!startBinding || !endBinding) return
+
+      const startShape = editor.getShape(startBinding.shapeId as TLShapeId) as SymbolShape
+      const endShape = editor.getShape(endBinding.shapeId as TLShapeId) as SymbolShape
+      if (!startShape || !endShape) return
+
+      const startDef = registry.get(startShape.props.symbolId)
+      const endDef = registry.get(endShape.props.symbolId)
+      if (!startDef || !endDef) return
+
+      const startPin = startDef.pins.find(p => p.number === startBinding.pinId.replace('pin-', ''))
+      const endPin = endDef.pins.find(p => p.number === endBinding.pinId.replace('pin-', ''))
+      if (!startPin || !endPin) return
+
+      const p1 = {
+        x: startShape.x + (startPin.connectionPoint.x - startDef.boundingBox.x),
+        y: startShape.y + (startPin.connectionPoint.y - startDef.boundingBox.y)
+      }
+      const p2 = {
+        x: endShape.x + (endPin.connectionPoint.x - endDef.boundingBox.x),
+        y: endShape.y + (endPin.connectionPoint.y - endDef.boundingBox.y)
+      }
+
+      const routedPoints = routeWire(p1, p2)
+      updateWireShape(wire.id, routedPoints)
+    }
+
     return () => cleanup()
   }, [editor])
 
@@ -169,21 +151,8 @@ export function useSchematicInteraction(editor: Editor) {
     const getOrthogonalPoints = (x: number, y: number, points: { x: number, y: number }[]) => {
       const lastPoint = points[points.length - 1]
       if (!lastPoint) return [{ x, y }]
-      
-      const dx = Math.abs(x - lastPoint.x)
-      const dy = Math.abs(y - lastPoint.y)
-      
-      // If we are already aligned (within a small threshold), force exact alignment
-      // Use a slightly larger epsilon (2 units) to prevent jittery diagonals
-      const EPSILON = 2
-      if (dx < EPSILON) return [{ x: lastPoint.x, y }]
-      if (dy < EPSILON) return [{ x, y: lastPoint.y }]
-
-      // Calculate elbow: maintain orthogonality
-      // Prefer the direction of the largest delta for the first segment
-      const elbow = dx > dy ? { x, y: lastPoint.y } : { x: lastPoint.x, y }
-      
-      return [elbow, { x, y }]
+      const orthoPoints = routeWire(lastPoint, { x, y }).slice(1)
+      return orthoPoints
     }
 
 

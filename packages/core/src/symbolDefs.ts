@@ -230,7 +230,7 @@ export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
     properties: { reference: 'U', value: '74HC32', footprint: 'DIP14', datasheet: '' },
     boundingBox: { x: 0, y: 0, width: 160, height: 220 },
   },
-  "switch": {
+/*   "switch": {
     id: 'switch',
     pins: [
       { number: '1', name: 'A', type: PinType.PASSIVE, connectionPoint: { x: 0, y: 20 }, bodyEdge: { x: 20, y: 20 }, angle: 0 },
@@ -245,9 +245,9 @@ export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
       ],
       circles: [], arcs: [],
     },
-    properties: { reference: 'SW', value: 'Slide', footprint: 'HOUSING_DIP_8_W7.62mm', datasheet: '' },
+    properties: { reference: 'SW', value: 'Slide', footprint: 'SW_SLIDE_SPDT', datasheet: '' },
     boundingBox: { x: 0, y: 0, width: 80, height: 40 },
-  },
+  }, */
   "battery": {
     id: 'battery',
     pins: [
@@ -272,6 +272,7 @@ export const SYMBOL_DEFS: Record<SymbolType, SchematicSymbolDef> = {
     pins: [
       { number: '1', name: '1', type: PinType.PASSIVE, connectionPoint: { x: 0, y: 30 }, bodyEdge: { x: 20, y: 30 }, angle: 0 },
       { number: '2', name: '2', type: PinType.PASSIVE, connectionPoint: { x: 80, y: 30 }, bodyEdge: { x: 60, y: 30 }, angle: 180 },
+      { number: '3', x: 40, y: 60, name: '3', type: PinType.PASSIVE, connectionPoint: { x: 40, y: 60 }, bodyEdge: { x: 40, y: 40 }, angle: 90 },
     ],
     geometry: {
       rectangles: [],
