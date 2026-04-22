@@ -188,6 +188,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   const footprints = useQuery(api.pcb.getFootprints, board ? { boardId: board._id } : "skip")
   const updateFootprints = useMutation(api.pcb.updateFootprints)
   const deleteFootprints = useMutation(api.pcb.deleteFootprints)
+  const deleteTrace = useMutation(api.pcb.deleteTrace)
 
   // Track pending updates to avoid cursor fighting
   const pendingUpdates = useRef<Map<TLShapeId, { x: number, y: number, rotation: number }>>(new Map())
@@ -404,9 +405,17 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
 
       // Handle deletions
       Object.values(changes.removed).forEach((shape) => {
-        if (shape.typeName === 'shape' && (shape as any).type === 'footprint') {
-          const dbId = shape.id.replace('shape:footprint-', '') as Id<"pcb_footprints">
-          deletions.push(dbId)
+        if (shape.typeName === 'shape') {
+          if ((shape as any).type === 'footprint') {
+            const dbId = shape.id.replace('shape:footprint-', '') as Id<"pcb_footprints">
+            deletions.push(dbId)
+          } else if ((shape as any).type === 'copper_trace') {
+            const dbId = (shape as any).props.traceDbId
+            if (dbId) {
+              console.log(`[PCB] Deleting trace ${dbId} from DB`)
+              deleteTrace({ id: dbId as Id<"pcb_traces"> }).catch(console.error)
+            }
+          }
         }
       })
 
@@ -506,7 +515,7 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
       // Remove traces that are no longer in DB
       const dbTraceIds = new Set(traces.map(t => `shape:trace-${t._id}`))
       const toDelete = editor.getCurrentPageShapes()
-        .filter(s => s.type === 'copper_trace' && !s.props.isPreview && !dbTraceIds.has(s.id))
+        .filter(s => s.type === 'copper_trace' && !(s as CopperTraceShape).props.isPreview && !dbTraceIds.has(s.id))
         .map(s => s.id)
 
       if (shapesToCreate.length) editor.createShapes(shapesToCreate)
