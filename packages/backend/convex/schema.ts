@@ -84,5 +84,14 @@ export default defineSchema({
     isLocked: v.boolean(),
   }).index("by_board", ["boardId"])
     .index("by_ref", ["boardId", "componentRef"]),
+
+  pcb_traces: defineTable({
+    boardId: v.id("pcb_boards"),
+    points: v.array(v.object({ x: v.number(), y: v.number() })), // mm coords
+    layer: v.union(v.literal("F.Cu"), v.literal("B.Cu")),
+    width: v.number(),                // trace width in mm (e.g. 0.25)
+    netId: v.optional(v.string()),    // net name if connected to a pad
+    createdAt: v.number(),
+  }).index("by_board", ["boardId"]),
 });
 

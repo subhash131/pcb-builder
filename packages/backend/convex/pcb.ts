@@ -312,3 +312,74 @@ export const deleteFootprints = mutation({
     }
   },
 });
+
+// ─── Copper Trace CRUD ───────────────────────────────────────────────────────
+
+/**
+ * Fetches all copper traces for a board.
+ */
+export const getTraces = query({
+  args: { boardId: v.id("pcb_boards") },
+  handler: async (ctx: QueryCtx, args: { boardId: Id<"pcb_boards"> }) => {
+    return await ctx.db
+      .query("pcb_traces")
+      .withIndex("by_board", (q: any) => q.eq("boardId", args.boardId))
+      .collect();
+  },
+});
+
+/**
+ * Adds a new copper trace to the board.
+ */
+export const addTrace = mutation({
+  args: {
+    boardId: v.id("pcb_boards"),
+    points: v.array(v.object({ x: v.number(), y: v.number() })),
+    layer: v.union(v.literal("F.Cu"), v.literal("B.Cu")),
+    width: v.number(),
+    netId: v.optional(v.string()),
+  },
+  handler: async (ctx: MutationCtx, args: {
+    boardId: Id<"pcb_boards">;
+    points: { x: number; y: number }[];
+    layer: "F.Cu" | "B.Cu";
+    width: number;
+    netId?: string;
+  }) => {
+    return await ctx.db.insert("pcb_traces", {
+      boardId: args.boardId,
+      points: args.points,
+      layer: args.layer,
+      width: args.width,
+      netId: args.netId,
+      createdAt: Date.now(),
+    });
+  },
+});
+
+/**
+ * Deletes a single copper trace.
+ */
+export const deleteTrace = mutation({
+  args: { id: v.id("pcb_traces") },
+  handler: async (ctx: MutationCtx, args: { id: Id<"pcb_traces"> }) => {
+    await ctx.db.delete(args.id);
+  },
+});
+
+/**
+ * Deletes all traces for a board.
+ */
+export const deleteAllTraces = mutation({
+  args: { boardId: v.id("pcb_boards") },
+  handler: async (ctx: MutationCtx, args: { boardId: Id<"pcb_boards"> }) => {
+    const traces = await ctx.db
+      .query("pcb_traces")
+      .withIndex("by_board", (q: any) => q.eq("boardId", args.boardId))
+      .collect();
+    for (const trace of traces) {
+      await ctx.db.delete(trace._id);
+    }
+  },
+});
+

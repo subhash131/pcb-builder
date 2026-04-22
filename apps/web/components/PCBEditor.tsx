@@ -10,6 +10,10 @@ import { RatsnestShapeUtil } from './editor/pcb/RatsnestShapeUtil'
 import { computeRatsnest } from '../lib/pcb-logic'
 import { NetlistReconstructor, mmToPx, pxToMm } from '@workspace/core'
 import { PCBSheetSettings } from './editor/PCBSheetSettings'
+import { CopperTraceShape, CopperTraceShapeUtil } from './editor/pcb/CopperTraceShapeUtil'
+import { usePCBWiring } from '../hooks/usePCBWiring'
+import { PCBToolbar } from './editor/pcb/PCBToolbar'
+
 
 function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number) {
   let timeoutId: ReturnType<typeof setTimeout>
@@ -21,7 +25,7 @@ function debounce<T extends (...args: Parameters<T>) => void>(fn: T, ms: number)
   return debounced
 }
 
-const shapeUtils = [FootprintShapeUtil, RatsnestShapeUtil]
+const shapeUtils = [FootprintShapeUtil, RatsnestShapeUtil, CopperTraceShapeUtil]
 
 const PCBContext = createContext<Id<"schematics"> | null>(null)
 
@@ -460,15 +464,91 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
     editor.updateInstanceState({ isGridMode: true })
   }, [editor])
 
+  // 7. Trace Sync: Receive traces from Convex
+  const traces = useQuery(api.pcb.getTraces, board ? { boardId: board._id } : "skip")
+  useEffect(() => {
+    if (!traces) return
+
+    editor.run(() => {
+      const shapesToCreate: TLShapePartial<CopperTraceShape>[] = []
+      const shapesToUpdate: TLShapePartial<CopperTraceShape>[] = []
+
+      traces.forEach(t => {
+        const id = `shape:trace-${t._id}` as TLShapeId
+        
+        // Skip if this trace is currently being interacted with (should be rare)
+        if (editor.getSelectedShapeIds().includes(id)) return
+
+        const shapeData = {
+          id,
+          type: 'copper_trace' as const,
+          x: 0,
+          y: 0,
+          props: {
+            points: t.points.map(p => ({ x: mmToPx(p.x), y: mmToPx(p.y) })),
+            layer: t.layer,
+            width: t.width,
+            isPreview: false,
+            traceDbId: t._id,
+          }
+        }
+
+        if (editor.store.has(id)) {
+          const current = editor.getShape(id)
+          // Simple diff check for sync
+          const needsUpdate = !current || JSON.stringify((current as any).props.points) !== JSON.stringify(shapeData.props.points)
+          if (needsUpdate) shapesToUpdate.push(shapeData)
+        } else {
+          shapesToCreate.push(shapeData)
+        }
+      })
+
+      // Remove traces that are no longer in DB
+      const dbTraceIds = new Set(traces.map(t => `shape:trace-${t._id}`))
+      const toDelete = editor.getCurrentPageShapes()
+        .filter(s => s.type === 'copper_trace' && !s.props.isPreview && !dbTraceIds.has(s.id))
+        .map(s => s.id)
+
+      if (shapesToCreate.length) editor.createShapes(shapesToCreate)
+      if (shapesToUpdate.length) editor.updateShapes(shapesToUpdate)
+      if (toDelete.length) editor.deleteShapes(toDelete)
+    })
+  }, [editor, traces])
+
+  // 8. Interaction: Wiring State Machine
+  const { 
+    isRouting, 
+    activeLayer, 
+    setActiveLayer, 
+    traceWidth, 
+    setTraceWidth, 
+    startRouting, 
+    stopRouting 
+  } = usePCBWiring(editor, board?._id)
+
   return (
     <>
       {board && (
-        <PCBSheetSettings 
-          boardId={board._id}
-          currentPreset={board.boardPreset}
-          currentWidth={board.boardWidth}
-          currentHeight={board.boardHeight}
-        />
+        <>
+          <PCBSheetSettings 
+            boardId={board._id}
+            currentPreset={board.boardPreset}
+            currentWidth={board.boardWidth}
+            currentHeight={board.boardHeight}
+          />
+          <PCBToolbar 
+            isRouting={isRouting}
+            activeLayer={activeLayer}
+            traceWidth={traceWidth}
+            onStartRouting={(layer) => {
+              setActiveLayer(layer)
+              startRouting()
+            }}
+            onStopRouting={stopRouting}
+            onLayerChange={setActiveLayer}
+            onWidthChange={setTraceWidth}
+          />
+        </>
       )}
     </>
   )
