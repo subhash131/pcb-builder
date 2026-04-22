@@ -69,8 +69,8 @@ app.post("/chat", async (req, res) => {
 
     const config = { configurable: { thread_id: conversationId } };
     
-    // 4. Invoke LangGraph agent with the full message history
-    const result = await agent.invoke({ messages: langchainMessages }, config);
+    // 4. Invoke LangGraph agent with the full message history and schematicId
+    const result = await agent.invoke({ messages: langchainMessages, schematicId }, config);
 
     // 5. Extract what the AI/Agent appended (we only want new AI responses, not the full history again)
     // LangGraph's result.messages has all messages, the end of the list are new ones
