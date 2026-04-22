@@ -18,6 +18,7 @@ import { toast } from 'sonner'
 
 const SchematicEditor = dynamic(() => import('../SchematicEditor'), { ssr: false })
 const PCBEditor = dynamic(() => import('../PCBEditor'), { ssr: false })
+const PCBViewer3D = dynamic(() => import('../PCBViewer3D'), { ssr: false })
 
 export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) {
   const [mounted, setMounted] = useState(false)
@@ -156,12 +157,8 @@ export function EditorShell({ schematicId }: { schematicId: Id<"schematics"> }) 
           </div>
         )}
         {activeTab === '3d' && (
-          <div className="absolute inset-0 flex items-center justify-center bg-slate-950">
-            <div className="text-center">
-              <Box className="w-16 h-16 text-slate-700 mx-auto mb-4" />
-              <h2 className="text-xl font-bold text-slate-400">3D Viewer Coming Soon</h2>
-              <p className="text-slate-600 max-w-xs mt-2">Phase 3 will fetch your PCB layout and extrude it into a high-fidelity 3D scene.</p>
-            </div>
+          <div className="absolute inset-0">
+            <PCBViewer3D schematicId={schematicId} />
           </div>
         )}
         

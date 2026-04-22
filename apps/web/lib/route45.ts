@@ -47,15 +47,15 @@ export function route45(from: Vec, to: Vec): Vec[] {
 export function pointsToSVGPath(points: Vec[], radius = 6): string {
   if (points.length < 2) return ''
   if (points.length === 2) {
-    return `M ${points[0].x} ${points[0].y} L ${points[1].x} ${points[1].y}`
+    return `M ${points[0]!.x} ${points[0]!.y} L ${points[1]!.x} ${points[1]!.y}`
   }
 
-  let d = `M ${points[0].x} ${points[0].y}`
+  let d = `M ${points[0]!.x} ${points[0]!.y}`
 
   for (let i = 1; i < points.length - 1; i++) {
-    const prev = points[i - 1]
-    const curr = points[i]
-    const next = points[i + 1]
+    const prev = points[i - 1]!
+    const curr = points[i]!
+    const next = points[i + 1]!
 
     // Vector from prev→curr and curr→next
     const d1x = curr.x - prev.x
@@ -88,7 +88,7 @@ export function pointsToSVGPath(points: Vec[], radius = 6): string {
   }
 
   // Final segment
-  const last = points[points.length - 1]
+  const last = points[points.length - 1]!
   d += ` L ${last.x} ${last.y}`
 
   return d

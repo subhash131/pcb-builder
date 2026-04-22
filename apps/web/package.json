@@ -18,6 +18,8 @@
   "dependencies": {
     "@hugeicons/core-free-icons": "^3.1.1",
     "@hugeicons/react": "^1.1.4",
+    "@react-three/drei": "^10.7.7",
+    "@react-three/fiber": "^9.6.0",
     "@workspace/backend": "workspace:*",
     "@workspace/core": "workspace:*",
     "@workspace/ui": "workspace:*",
@@ -32,6 +34,7 @@
     "react": "^19.2.4",
     "react-dom": "^19.2.4",
     "sonner": "^2.0.7",
+    "three": "^0.184.0",
     "tldraw": "^3.0.0",
     "zundo": "^2.3.0",
     "zustand": "^5.0.12"
@@ -42,6 +45,7 @@
     "@types/node": "^20.19.30",
     "@types/react": "^19.2.10",
     "@types/react-dom": "^19.2.3",
+    "@types/three": "^0.184.0",
     "@vitejs/plugin-react": "^4.3.4",
     "@vitest/ui": "^3.0.7",
     "@workspace/eslint-config": "workspace:^",
