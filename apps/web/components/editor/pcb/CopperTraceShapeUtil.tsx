@@ -144,8 +144,8 @@ export class CopperTraceShapeUtil extends ShapeUtil<CopperTraceShape> {
           </path>
           {/* Start cap dot */}
           <circle
-            cx={localPts[0].x}
-            cy={localPts[0].y}
+            cx={localPts[0]!.x}
+            cy={localPts[0]!.y}
             r={strokeWidth * 0.8}
             fill={color}
             opacity={0.9}
@@ -187,7 +187,7 @@ export class CopperTraceShapeUtil extends ShapeUtil<CopperTraceShape> {
           strokeLinejoin="round"
         />
         {/* Pad endpoint caps */}
-        {[localPts[0], localPts[localPts.length - 1]].map((p, i) => (
+        {[localPts[0]!, localPts[localPts.length - 1]!].map((p, i) => (
           <circle
             key={i}
             cx={p.x}

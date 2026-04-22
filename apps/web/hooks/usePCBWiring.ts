@@ -197,7 +197,7 @@ export function usePCBWiring(
       e.stopPropagation()
 
       const routed = route45(
-        state.committedPoints[state.committedPoints.length - 1],
+        state.committedPoints[state.committedPoints.length - 1]!,
         { x: endX, y: endY }
       )
       const newPoints = [...state.committedPoints, ...routed.slice(1)]

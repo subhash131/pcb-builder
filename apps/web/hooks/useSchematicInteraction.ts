@@ -72,7 +72,7 @@ export function useSchematicInteraction(editor: Editor) {
         
         // If wire has both bindings but is just a single diagonal/naive segment, auto-route it!
         if (wire.props.startBinding && wire.props.endBinding && points.length <= 2) {
-          const isDiagonal = points.length === 2 && points[0].x !== points[1].x && points[0].y !== points[1].y
+          const isDiagonal = points.length === 2 && points[0]!.x !== points[1]!.x && points[0]!.y !== points[1]!.y
           if (isDiagonal || points.length < 2) {
             reRouteWire(wire)
           }
