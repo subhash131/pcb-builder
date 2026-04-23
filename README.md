@@ -1,47 +1,95 @@
-# shadcn/ui monorepo template
+# 🛠️ PCB Builder
 
-This template is for creating a monorepo with shadcn/ui.
+An open-source, web-based PCB design suite with a focus on AI assistance and modern web technologies. Build schematics, route traces, and visualize your boards in 3D—all in the browser.
 
-## Usage
+![PCB Builder Preview](apps/web/public/preview.png)
+
+## ✨ Features
+
+- **Intuitive Schematic Editor**: Built with `tldraw` for a smooth, high-performance drawing experience.
+- **AI Design Partner**: Integrated AI agent powered by LangGraph to help with component selection, wiring, and automation.
+- **Real-time 3D Viewer**: Visualize your PCB in 3D with realistic stackup and component rendering using Three.js.
+- **Convex Backend**: Serverless backend for real-time sync and collaboration.
+- **Professional-grade Tools**: Schematic ERC (Electrical Rule Check) and DRC (Design Rule Check) support.
+
+## 🚀 Getting Started
+
+### Prerequisites
+
+- **Node.js**: Version 20 or higher.
+- **pnpm**: Version 10 or higher.
+
+### Installation
+
+1.  **Clone the repository**:
+    ```bash
+    git clone https://github.com/subhash131/pcb-builder.git
+    cd pcb-builder
+    ```
+
+2.  **Install dependencies**:
+    ```bash
+    pnpm install
+    ```
+
+### Environment Setup
+
+You need to configure environment variables for each component:
+
+#### 1. Frontend (`apps/web`)
+Copy `.env.example` to `.env` and set your Convex URL:
+```bash
+cp apps/web/.env.example apps/web/.env
+```
+
+#### 2. AI Agent (`apps/agent`)
+Copy `.env.example` to `.env` and add your API keys:
+```bash
+cp apps/agent/.env.example apps/agent/.env
+```
+*Required: `GROQ_API_KEY` (or OpenAI) and `CONVEX_URL`.*
+
+#### 3. Backend (`packages/backend`)
+Environment variables are managed locally by Convex.
+
+### Running the Project
+
+Run the full stack (Web, Agent, and Convex) with a single command:
 
 ```bash
-pnpm dlx shadcn@latest init
+pnpm dev
 ```
 
-## Adding components
+This command uses **Turborepo** to launch:
+- Next.js development server for the web app.
+- Tsx watch mode for the AI agent.
+- Convex development server for the backend.
 
-To add components to your app, run the following command at the root of your `web` app:
+## 📁 Project Structure
 
-```bash
-pnpm dlx shadcn@latest add button -c apps/web
+```text
+├── apps/
+│   ├── web/          # Next.js frontend application
+│   └── agent/        # LangGraph-powered AI agent
+├── packages/
+│   ├── backend/      # Convex schema and functions
+│   ├── core/         # Shared logic and netlist engine
+│   ├── ui/           # Shared UI component library (shadcn/ui)
+│   └── ts-config/    # Shared TypeScript configurations
+├── turbo.json        # Turborepo configuration
+└── pnpm-workspace.yaml
 ```
 
-This will place the ui components in the `packages/ui/src/components` directory.
+## 🛠️ Tech Stack
 
-## Testing
+- **Framework**: Next.js 15 (App Router)
+- **Database/Backend**: Convex
+- **Canvas/Graphics**: tldraw (2D), Three.js (3D)
+- **AI Orchestration**: LangGraph, LangChain
+- **Styling**: Tailwind CSS, Framer Motion
+- **Tooling**: Turborepo, pnpm, Vitest, Playwright
 
-This project uses **Vitest** for unit/integration testing and **Playwright** for E2E testing.
+## 📄 License
 
-### Running Tests
+This project is licensed under the MIT License.
 
-- **All Unit Tests**: `pnpm test` (Uses Turbo to run tests across all packages)
-- **Watch Mode (Root)**: `pnpm test:watch`
-- **UI Mode**: `pnpm test:ui`
-- **E2E Tests**: `pnpm test:e2e`
-
-### Writing Tests
-
-- Add unit tests using `.test.ts` or `.spec.ts` files.
-- Add E2E tests in the `apps/web/e2e/` directory.
-
-## Tailwind
-
-Your `tailwind.config.ts` and `globals.css` are already set up to use the components from the `ui` package.
-
-## Using components
-
-To use the components in your app, import them from the `ui` package.
-
-```tsx
-import { Button } from "@workspace/ui/components/button"
-```
