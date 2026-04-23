@@ -29,14 +29,12 @@ const shapeUtils = [FootprintShapeUtil, RatsnestShapeUtil, CopperTraceShapeUtil]
 
 const PCBContext = createContext<Id<"schematics"> | null>(null)
 
-const KiCadPCBSheet = track(() => {
+const KiCadPCBSheet = () => {
   const schematicId = useContext(PCBContext)
   const board = useQuery(api.pcb.getBoardBySchematicId, schematicId ? { schematicId } : "skip")
   
-  if (!board) return null
-
-  const width = mmToPx(board.boardWidth)
-  const height = mmToPx(board.boardHeight)
+  const width = mmToPx(board?.boardWidth ?? 100)
+  const height = mmToPx(board?.boardHeight ?? 80)
   
   const FRAME_COLOR = '#444444' // Subtle dark frame
   const BOARD_COLOR = '#0a2a1a' // Deep green solder mask
@@ -164,16 +162,22 @@ const KiCadPCBSheet = track(() => {
         <div style={{ borderBottom: `1px solid #333`, paddingBottom: 4, marginBottom: 8, fontSize: 16, fontWeight: 'bold', color: COPPER_COLOR }}>
           P. PROTOTYPE v1.0
         </div>
-        <div>Layer Count: {board.layers}</div>
-        <div>Board ID: {board._id.substring(0, 8)}...</div>
+        {board ? (
+          <>
+            <div>Layer Count: {board.layers}</div>
+            <div>Board ID: {board._id.substring(0, 8)}...</div>
+          </>
+        ) : (
+          <div className="animate-pulse text-yellow-500/70">Initializing Board...</div>
+        )}
         <div style={{ marginTop: 'auto', display: 'flex', justifyContent: 'space-between', opacity: 0.7 }}>
-          <span>{Math.round(board.boardWidth)} x {Math.round(board.boardHeight)} mm</span>
-          <span>{new Date(board.updatedAt || 0).toLocaleDateString()}</span>
+          <span>{board ? `${Math.round(board.boardWidth)} x ${Math.round(board.boardHeight)} mm` : '100 x 80 mm'}</span>
+          <span>{board ? new Date(board.updatedAt || 0).toLocaleDateString() : 'Pending'}</span>
         </div>
       </div>
     </div>
   )
-})
+}
 
 const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) => {
   const editor = useEditor()
@@ -189,6 +193,15 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   const updateFootprints = useMutation(api.pcb.updateFootprints)
   const deleteFootprints = useMutation(api.pcb.deleteFootprints)
   const deleteTrace = useMutation(api.pcb.deleteTrace)
+  const getOrCreateBoard = useMutation(api.pcb.getOrCreateBoard)
+
+  // 0. Auto-create board if missing
+  useEffect(() => {
+    if (board === null) {
+      console.log("[PCB] Board missing for schematic, creating...")
+      getOrCreateBoard({ schematicId }).catch(console.error)
+    }
+  }, [board, schematicId, getOrCreateBoard])
 
   // Track pending updates to avoid cursor fighting
   const pendingUpdates = useRef<Map<TLShapeId, { x: number, y: number, rotation: number }>>(new Map())
@@ -538,26 +551,30 @@ const PCBEditorUI = track(({ schematicId }: { schematicId: Id<"schematics"> }) =
   return (
     <>
       {board && (
-        <>
-          <PCBSheetSettings 
-            boardId={board._id}
-            currentPreset={board.boardPreset}
-            currentWidth={board.boardWidth}
-            currentHeight={board.boardHeight}
-          />
-          <PCBToolbar 
-            isRouting={isRouting}
-            activeLayer={activeLayer}
-            traceWidth={traceWidth}
-            onStartRouting={(layer) => {
-              setActiveLayer(layer)
-              startRouting()
-            }}
-            onStopRouting={stopRouting}
-            onLayerChange={setActiveLayer}
-            onWidthChange={setTraceWidth}
-          />
-        </>
+        <PCBSheetSettings 
+          boardId={board._id}
+          currentPreset={board.boardPreset}
+          currentWidth={board.boardWidth}
+          currentHeight={board.boardHeight}
+        />
+      )}
+      {board ? (
+        <PCBToolbar 
+          isRouting={isRouting}
+          activeLayer={activeLayer}
+          traceWidth={traceWidth}
+          onStartRouting={(layer) => {
+            setActiveLayer(layer)
+            startRouting()
+          }}
+          onStopRouting={stopRouting}
+          onLayerChange={setActiveLayer}
+          onWidthChange={setTraceWidth}
+        />
+      ) : (
+        <div className="fixed top-4 right-4 z-50 bg-slate-900/80 backdrop-blur px-4 py-2 rounded-lg border border-slate-700 text-xs font-mono text-slate-400">
+          Waiting for Board...
+        </div>
       )}
     </>
   )
