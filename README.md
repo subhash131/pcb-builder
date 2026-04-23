@@ -82,7 +82,7 @@ This command uses **Turborepo** to launch:
 
 ## 🛠️ Tech Stack
 
-- **Framework**: Next.js 15 (App Router)
+- **Framework**: Next.js (App Router)
 - **Database/Backend**: Convex
 - **Canvas/Graphics**: tldraw (2D), Three.js (3D)
 - **AI Orchestration**: LangGraph, LangChain
